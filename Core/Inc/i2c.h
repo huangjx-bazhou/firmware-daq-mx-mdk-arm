@@ -35,12 +35,16 @@ extern "C" {
 extern I2C_HandleTypeDef hi2c2;
 
 /* USER CODE BEGIN Private defines */
-
+#define TLC59116_ADDR_1   0x60U
+#define TLC59116_ADDR_2   0x61U
 /* USER CODE END Private defines */
 
 void MX_I2C2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+HAL_StatusTypeDef TLC59116_InitPwmMode(uint8_t addr7);
+HAL_StatusTypeDef TLC59116_SetAllPwm(uint8_t addr7, uint8_t pwm);
 
 /* USER CODE END Prototypes */
 

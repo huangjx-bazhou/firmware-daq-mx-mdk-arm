@@ -137,5 +137,75 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 
 /* USER CODE BEGIN 1 */
 
+#define TLC59116_REG_MODE1    0x00U
+#define TLC59116_REG_MODE2    0x01U
+#define TLC59116_REG_PWM0     0x02U
+#define TLC59116_REG_LEDOUT0  0x14U
+#define TLC59116_REG_LEDOUT1  0x15U
+#define TLC59116_REG_LEDOUT2  0x16U
+#define TLC59116_REG_LEDOUT3  0x17U
+
+static HAL_StatusTypeDef TLC59116_WriteReg(uint8_t addr7, uint8_t reg, uint8_t value)
+{
+  return HAL_I2C_Mem_Write(&hi2c2, (uint16_t)(addr7 << 1), reg, I2C_MEMADD_SIZE_8BIT, &value, 1U, 100U);
+}
+
+HAL_StatusTypeDef TLC59116_InitPwmMode(uint8_t addr7)
+{
+  HAL_StatusTypeDef status = HAL_OK;
+  status = HAL_I2C_IsDeviceReady(&hi2c2, (uint16_t)(addr7 << 1), 3U, 20U);
+  if (status != HAL_OK)
+  {
+    //return status;
+  }
+
+  status = TLC59116_WriteReg(addr7, TLC59116_REG_MODE1, 0x00U);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+  status = TLC59116_WriteReg(addr7, TLC59116_REG_MODE2, 0x00U);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+  status = TLC59116_WriteReg(addr7, TLC59116_REG_LEDOUT0, 0xAAU);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+   status = TLC59116_WriteReg(addr7, TLC59116_REG_LEDOUT1, 0xAAU);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+  status = TLC59116_WriteReg(addr7, TLC59116_REG_LEDOUT2, 0xAAU);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+  status = TLC59116_WriteReg(addr7, TLC59116_REG_LEDOUT3, 0xAAU);
+  if (status != HAL_OK)  {
+    return status;
+  }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef TLC59116_SetAllPwm(uint8_t addr7, uint8_t pwm)
+{
+  uint16_t reg = 0;
+  for (uint16_t i = 0; i < 16U; i++)
+  {
+    reg = i + TLC59116_REG_PWM0;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(&hi2c2, (uint16_t)(addr7 << 1), reg, I2C_MEMADD_SIZE_8BIT, &pwm, 1U, 100U);
+    if (status != HAL_OK)  {
+      return status;
+    }
+  }
+
+  return HAL_OK;
+}
+
 /* USER CODE END 1 */
 
