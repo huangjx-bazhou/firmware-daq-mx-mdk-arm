@@ -45,8 +45,8 @@
 
 /* USER CODE BEGIN PV */
 
-static uint8_t g_pwm = 0U;
-static int8_t g_pwm_dir = 1;
+static uint8_t g_ch = 0U;
+static uint8_t g_dev = 0U;
 
 /* USER CODE END PV */
 
@@ -97,13 +97,15 @@ int main(void)
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
-  TLC59116_InitPwmMode(TLC59116_ADDR_1);
-  HAL_Delay(100);
-  TLC59116_SetAllPwm(TLC59116_ADDR_1, 15);
-  HAL_Delay(100);
-  TLC59116_InitPwmMode(TLC59116_ADDR_2);
-  HAL_Delay(100);
-  TLC59116_SetAllPwm(TLC59116_ADDR_2, 15);
+  if (TLC59116_InitPwmMode(TLC59116_ADDR_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  if (TLC59116_InitPwmMode(TLC59116_ADDR_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /* USER CODE END 2 */
 
@@ -114,6 +116,44 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (g_dev == 0U)
+    {
+      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 255U) != HAL_OK)
+      {
+        Error_Handler();
+      }
+    }
+    else
+    {
+      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 255U) != HAL_OK)
+      {
+        Error_Handler();
+      }
+    }
+
+    HAL_Delay(100);
+
+    if (g_dev == 0U)
+    {
+      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 0U) != HAL_OK)
+      {
+        Error_Handler();
+      }
+    }
+    else
+    {
+      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 0U) != HAL_OK)
+      {
+        Error_Handler();
+      }
+    }
+
+    g_ch++;
+    if (g_ch >= 16U)
+    {
+      g_ch = 0U;
+      g_dev ^= 1U;
+    }
   }
   /* USER CODE END 3 */
 }

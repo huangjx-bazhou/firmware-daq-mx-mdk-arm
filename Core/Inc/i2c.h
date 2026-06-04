@@ -46,6 +46,24 @@ void MX_I2C2_Init(void);
 HAL_StatusTypeDef TLC59116_InitPwmMode(uint8_t addr7);
 HAL_StatusTypeDef TLC59116_SetAllPwm(uint8_t addr7, uint8_t pwm);
 
+/**
+ * @brief 设置指定通道的PWM值
+ *
+ * @param addr7   I2C从设备地址
+ * @param channel 通道号0-15
+ * @param pwm     PWM值，范围0-255
+ * @return HAL_StatusTypeDef
+ *         - HAL_OK: 成功
+ *         - HAL_ERROR: 发生错误
+ *         - HAL_BUSY: 设备忙
+ *         - HAL_TIMEOUT: 操作超时
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-04
+ */
+HAL_StatusTypeDef TLC59116_SetPwm(uint8_t addr7, uint8_t channel, uint8_t pwm);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

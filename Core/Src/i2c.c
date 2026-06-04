@@ -207,5 +207,23 @@ HAL_StatusTypeDef TLC59116_SetAllPwm(uint8_t addr7, uint8_t pwm)
   return HAL_OK;
 }
 
+HAL_StatusTypeDef TLC59116_SetPwm(uint8_t addr7, uint8_t channel, uint8_t pwm)
+{
+  // 检查地址，通道，PWM值的合法性
+  // 从设备地址必须在0x60到0x6F之间(7位地址模式)
+  if (addr7 < 0x60U || addr7 > 0x6F)
+  {
+    return HAL_ERROR;
+  }
+
+  // 通道号必须在0到15之间
+  if (channel > 15U)
+  {
+    return HAL_ERROR;
+  }
+
+  return HAL_I2C_Mem_Write(&hi2c2, (uint16_t)(addr7 << 1), (uint16_t)(TLC59116_REG_PWM0 + channel), I2C_MEMADD_SIZE_8BIT, &pwm, 1U, 100U);
+}
+
 /* USER CODE END 1 */
 
