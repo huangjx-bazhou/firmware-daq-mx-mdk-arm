@@ -19,8 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
-#include "usart.h"
 #include "spi.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -36,6 +36,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define UART3_CMD_MAX_LEN 64U
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,6 +51,9 @@
 
 static uint8_t g_ch = 0U;
 static uint8_t g_dev = 0U;
+static uint8_t g_uart3_rx_byte = 0U;
+static uint8_t g_uart3_cmd_buf[UART3_CMD_MAX_LEN];
+static uint16_t g_uart3_cmd_len = 0U;
 
 /* USER CODE END PV */
 
@@ -57,10 +62,17 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
+static void USART3_StartRxIT(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void USART3_StartRxIT(void)
+{
+  (void)HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+}
 
 /* USER CODE END 0 */
 
@@ -97,19 +109,30 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C2_Init();
-  MX_LPUART1_UART_Init();
   MX_SPI1_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  if (TLC59116_InitPwmMode(TLC59116_ADDR_1) != HAL_OK)
+  USART3_StartRxIT();
+
   {
-    Error_Handler();
+    static const uint8_t msg[] = "Hello, World!\r\n";
+    (void)HAL_UART_Transmit(&huart3, (uint8_t *)msg, (uint16_t)(sizeof(msg) - 1U), HAL_MAX_DELAY);
   }
 
-  if (TLC59116_InitPwmMode(TLC59116_ADDR_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
+//  if (TLC59116_InitPwmMode(TLC59116_ADDR_1) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
+
+//  if (TLC59116_InitPwmMode(TLC59116_ADDR_2) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
+
+//  ADS1299_1_Reset();
+//  ADS1299_2_Reset();
+//  ADS1299_Start();
 
   /* USER CODE END 2 */
 
@@ -120,44 +143,49 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if (g_dev == 0U)
-    {
-      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 255U) != HAL_OK)
-      {
-        Error_Handler();
-      }
-    }
-    else
-    {
-      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 255U) != HAL_OK)
-      {
-        Error_Handler();
-      }
-    }
+    //{
+      //static const uint8_t msg[] = "Hello, World!\r\n";
+      //(void)HAL_UART_Transmit(&huart3, (uint8_t *)msg, (uint16_t)(sizeof(msg) - 1U), HAL_MAX_DELAY);
+    //}
 
-    HAL_Delay(100);
+//    if (g_dev == 0U)
+//    {
+//      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 255U) != HAL_OK)
+//      {
+//        Error_Handler();
+//      }
+//    }
+//    else
+//    {
+//      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 255U) != HAL_OK)
+//      {
+//        Error_Handler();
+//      }
+//    }
 
-    if (g_dev == 0U)
-    {
-      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 0U) != HAL_OK)
-      {
-        Error_Handler();
-      }
-    }
-    else
-    {
-      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 0U) != HAL_OK)
-      {
-        Error_Handler();
-      }
-    }
+//    HAL_Delay(100);
 
-    g_ch++;
-    if (g_ch >= 16U)
-    {
-      g_ch = 0U;
-      g_dev ^= 1U;
-    }
+//    if (g_dev == 0U)
+//    {
+//      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 0U) != HAL_OK)
+//      {
+//        Error_Handler();
+//      }
+//    }
+//    else
+//    {
+//      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 0U) != HAL_OK)
+//      {
+//        Error_Handler();
+//      }
+//    }
+
+//    g_ch++;
+//    if (g_ch >= 16U)
+//    {
+//      g_ch = 0U;
+//      g_dev ^= 1U;
+//    }
   }
   /* USER CODE END 3 */
 }
@@ -222,6 +250,37 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART3)
+  {
+    uint8_t ch = g_uart3_rx_byte;
+
+    if ((ch == '\r') || (ch == '\n'))
+    {
+      if (g_uart3_cmd_len > 0U)
+      {
+        (void)HAL_UART_Transmit(&huart3, g_uart3_cmd_buf, g_uart3_cmd_len, 10U);
+        g_uart3_cmd_len = 0U;
+      }
+    }
+    else
+    {
+      if (g_uart3_cmd_len < UART3_CMD_MAX_LEN)
+      {
+        g_uart3_cmd_buf[g_uart3_cmd_len] = ch;
+        g_uart3_cmd_len++;
+      }
+      else
+      {
+        g_uart3_cmd_len = 0U;
+      }
+    }
+
+    USART3_StartRxIT();
+  }
+}
 
 /* USER CODE END 4 */
 

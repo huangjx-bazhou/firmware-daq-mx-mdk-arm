@@ -40,6 +40,43 @@ void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+/********************************************************
+ * ADS1299芯片相关函数
+ ********************************************************/
+
+/**
+ * @brief   复位第1个ADS1299芯片
+ *
+ * 将第1个ADS1299芯片的RESET引脚拉低，等待1ms后再拉高，再等待5ms，完成复位
+ * 第1个ADS1299芯片的RESET引脚连接到PB7
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-05
+ */
+void ADS1299_1_Reset(void);
+
+/**
+ * @brief   复位第2个ADS1299芯片
+ *
+ * 将第2个ADS1299芯片的RESET引脚拉低，等待1ms后再拉高，再等待5ms，完成复位
+ * 第2个ADS1299芯片的RESET引脚连接到PA5
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-05
+ */
+void ADS1299_2_Reset(void);
+
+/**
+ * @brief   开始采集
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-05
+ */
+void ADS1299_Start(void);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

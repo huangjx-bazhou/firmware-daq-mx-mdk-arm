@@ -125,4 +125,25 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
 
+void ADS1299_1_Reset(void)
+{
+  HAL_GPIO_WritePin(ADS1299_1_RESET_GPIO_Port, ADS1299_1_RESET_Pin, GPIO_PIN_RESET);
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(ADS1299_1_RESET_GPIO_Port, ADS1299_1_RESET_Pin, GPIO_PIN_SET);
+  HAL_Delay(5);
+}
+
+void ADS1299_2_Reset(void)
+{
+  HAL_GPIO_WritePin(ADS1299_2_RESET_GPIO_Port, ADS1299_2_RESET_Pin, GPIO_PIN_RESET);
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(ADS1299_2_RESET_GPIO_Port, ADS1299_2_RESET_Pin, GPIO_PIN_SET);
+  HAL_Delay(5);
+}
+
+void ADS1299_Start(void)
+{
+  HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_SET);
+}
+
 /* USER CODE END 2 */
