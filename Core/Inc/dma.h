@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    spi.h
+  * @file    dma.h
   * @brief   This file contains all the function prototypes for
-  *          the spi.c file
+  *          the dma.c file
   ******************************************************************************
   * @attention
   *
@@ -18,8 +18,8 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __SPI_H__
-#define __SPI_H__
+#ifndef __DMA_H__
+#define __DMA_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,48 +28,19 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+/* DMA memory to memory transfer handles -------------------------------------*/
+
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
-
-extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_SPI1_Init(void);
+void MX_DMA_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
-/********************************************************
- * ADS1299芯片相关函数
- ********************************************************/
-
-/**
- * @brief   向第1个ADS1299芯片发送命令字节
- *
- * @param   cmd 要发送的命令字节
- * @return  HAL_StatusTypeDef 发送状态
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-06-08
- */
-HAL_StatusTypeDef ADS1299_1_SendCmd(uint8_t cmd);
-
-/**
- * @brief   向第1个ADS1299芯片写入寄存器
- *
- * @param   reg 寄存器地址
- * @param   value 要写入的值字节
- * @return  HAL_StatusTypeDef 发送状态
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-06-08
- */
-HAL_StatusTypeDef ADS1299_1_WriteReg(uint8_t reg, uint8_t value);
 
 /* USER CODE END Prototypes */
 
@@ -77,5 +48,5 @@ HAL_StatusTypeDef ADS1299_1_WriteReg(uint8_t reg, uint8_t value);
 }
 #endif
 
-#endif /* __SPI_H__ */
+#endif /* __DMA_H__ */
 

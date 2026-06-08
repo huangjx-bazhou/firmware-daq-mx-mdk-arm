@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "usart.h"
@@ -38,6 +39,15 @@
 
 #define UART3_CMD_MAX_LEN 64U
 
+#define ADS1299_CMD_WAKEUP 0x02U
+#define ADS1299_CMD_RESET  0x06U
+#define ADS1299_CMD_SDATAC 0x11U
+#define ADS1299_CMD_START  0x08U
+
+#define ADS1299_REG_CONFIG1 0x01U
+#define ADS1299_REG_CONFIG2 0x02U
+#define ADS1299_REG_CONFIG3 0x03U
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -55,6 +65,11 @@ static uint8_t g_uart3_rx_byte = 0U;
 static uint8_t g_uart3_cmd_buf[UART3_CMD_MAX_LEN];
 static uint16_t g_uart3_cmd_len = 0U;
 
+// SPI ADS1299
+uint8_t spi_tx_buffer[27] = {0};  // 全 0x00，产生 SCLK
+uint8_t spi_ads_1_rx_buffer[27];  // 第一个ADS1299接收缓冲区
+uint8_t spi_ads_2_rx_buffer[27];  // 第二个ADS1299接收缓冲区
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,16 +77,61 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
-static void USART3_StartRxIT(void);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-static void USART3_StartRxIT(void)
+/**
+ * @brief   初始化第1个ADS1299芯片
+ *
+ * @return  HAL_StatusTypeDef 初始化状态
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-08
+ */
+HAL_StatusTypeDef ADS1299_1_Init()
 {
-  (void)HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+  // 复位
+  ADS1299_1_Reset();
+
+  // 拉低CS引脚
+  ADS1299_1_CS_Low();
+
+  if (ADS1299_1_SendCmd(ADS1299_CMD_SDATAC) != HAL_OK)
+  {
+    ADS1299_1_CS_High();
+    return HAL_ERROR;
+  }
+
+  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG1, 0x96U) != HAL_OK)
+  {
+    ADS1299_1_CS_High();
+    return HAL_ERROR;
+  }
+
+  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG2, 0xD0U) != HAL_OK)
+  {
+    ADS1299_1_CS_High();
+    return HAL_ERROR;
+  }
+
+  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG3, 0xE0U) != HAL_OK)
+  {
+    ADS1299_1_CS_High();
+    return HAL_ERROR;
+  }
+
+  if (ADS1299_1_SendCmd(ADS1299_CMD_WAKEUP) != HAL_OK)
+  {
+    ADS1299_1_CS_High();
+    return HAL_ERROR;
+  }
+
+  // 拉高CS引脚
+  ADS1299_1_CS_High();
+  return HAL_OK;
 }
 
 /* USER CODE END 0 */
@@ -108,31 +168,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_SPI1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  USART3_StartRxIT();
-
-  {
-    static const uint8_t msg[] = "Hello, World!\r\n";
-    (void)HAL_UART_Transmit(&huart3, (uint8_t *)msg, (uint16_t)(sizeof(msg) - 1U), HAL_MAX_DELAY);
-  }
-
-//  if (TLC59116_InitPwmMode(TLC59116_ADDR_1) != HAL_OK)
-//  {
-//    Error_Handler();
-//  }
-
-//  if (TLC59116_InitPwmMode(TLC59116_ADDR_2) != HAL_OK)
-//  {
-//    Error_Handler();
-//  }
-
-//  ADS1299_1_Reset();
-//  ADS1299_2_Reset();
-//  ADS1299_Start();
+  HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
 
   /* USER CODE END 2 */
 
@@ -143,49 +185,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    //{
-      //static const uint8_t msg[] = "Hello, World!\r\n";
-      //(void)HAL_UART_Transmit(&huart3, (uint8_t *)msg, (uint16_t)(sizeof(msg) - 1U), HAL_MAX_DELAY);
-    //}
-
-//    if (g_dev == 0U)
-//    {
-//      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 255U) != HAL_OK)
-//      {
-//        Error_Handler();
-//      }
-//    }
-//    else
-//    {
-//      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 255U) != HAL_OK)
-//      {
-//        Error_Handler();
-//      }
-//    }
-
-//    HAL_Delay(100);
-
-//    if (g_dev == 0U)
-//    {
-//      if (TLC59116_SetPwm(TLC59116_ADDR_1, g_ch, 0U) != HAL_OK)
-//      {
-//        Error_Handler();
-//      }
-//    }
-//    else
-//    {
-//      if (TLC59116_SetPwm(TLC59116_ADDR_2, g_ch, 0U) != HAL_OK)
-//      {
-//        Error_Handler();
-//      }
-//    }
-
-//    g_ch++;
-//    if (g_ch >= 16U)
-//    {
-//      g_ch = 0U;
-//      g_dev ^= 1U;
-//    }
   }
   /* USER CODE END 3 */
 }
@@ -251,6 +250,40 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief   处理GPIO外部中断，连接ADS1299芯片的DRDY引脚，当DRDY引脚拉低时，触发中断，读取数据寄存器的内容
+  * @param   GPIO_Pin  GPIO引脚号
+  * @retval  None
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  // PB0(连接第一个ADS1299的DRDY引脚) 下降沿中断处理逻辑
+  if (GPIO_Pin == GPIO_PIN_0)
+  {
+    // 将ADS1299_1的CS引脚拉低，准备读取数据寄存器
+    ADS1299_1_CS_Low();
+    
+    // 读取ADS1299_1的数据寄存器
+    HAL_SPI_TransmitReceive_DMA(&hspi1,
+                                spi_tx_buffer,
+                                spi_ads_1_rx_buffer,
+                                27);
+  }
+}
+
+/**
+  * @brief   SPI DMA收发完成回调函数
+  * @param   hspi  SPI句柄
+  * @retval  None
+  */
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  if (hspi->Instance == SPI1)
+  {
+    ADS1299_1_CS_High();
+  }
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART3)
@@ -278,7 +311,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       }
     }
 
-    USART3_StartRxIT();
+    HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
   }
 }
 

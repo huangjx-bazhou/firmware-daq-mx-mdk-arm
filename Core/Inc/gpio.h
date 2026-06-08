@@ -69,7 +69,45 @@ void ADS1299_1_Reset(void);
 void ADS1299_2_Reset(void);
 
 /**
- * @brief   开始采集
+ * @brief   将第1个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-08
+ */
+void ADS1299_1_CS_Low(void);
+
+/**
+ * @brief   将第1个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-08
+ */
+void ADS1299_1_CS_High(void);
+
+/**
+ * @brief   将第2个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-08
+ */
+void ADS1299_2_CS_Low(void);
+
+/**
+ * @brief   将第2个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-08
+ */
+void ADS1299_2_CS_High(void);
+
+/**
+ * @brief 开始2个ADS1299芯片的采集
+ *
+ * 两个ADS1299的START引脚拉高，都与MCU的PE8引脚连接
  *
  * @author  黄佳兴
  * @version 0.1
