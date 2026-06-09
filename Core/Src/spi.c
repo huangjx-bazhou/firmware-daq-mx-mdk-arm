@@ -44,7 +44,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
@@ -197,7 +197,12 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 
 HAL_StatusTypeDef ADS1299_1_SendCmd(uint8_t cmd)
 {
-  return HAL_SPI_Transmit(&hspi1, &cmd, 1U, 100U);
+  ADS1299_1_CS_Low();
+  HAL_Delay(1);
+  HAL_StatusTypeDef status = HAL_SPI_Transmit(&hspi1, &cmd, 1U, 100U);
+  ADS1299_1_CS_High();
+  HAL_Delay(1);
+  return status;
 }
 
 HAL_StatusTypeDef ADS1299_1_WriteReg(uint8_t reg, uint8_t value)
@@ -207,8 +212,12 @@ HAL_StatusTypeDef ADS1299_1_WriteReg(uint8_t reg, uint8_t value)
   tx[0] = (uint8_t)(0x40U | (reg & 0x1FU));
   tx[1] = 0x00U;
   tx[2] = value;
-
-  return HAL_SPI_Transmit(&hspi1, tx, 3U, 100U);
+  ADS1299_1_CS_Low();
+  HAL_Delay(1);
+  HAL_StatusTypeDef status = HAL_SPI_Transmit(&hspi1, tx, 3U, 100U);
+  ADS1299_1_CS_High();
+  HAL_Delay(1);
+  return status;  
 }
 
 /* USER CODE END 1 */
