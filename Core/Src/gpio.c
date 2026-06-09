@@ -153,12 +153,12 @@ void ADS1299_2_Reset(void)
 
 void ADS1299_1_CS_Low(void)
 {
-  HAL_GPIO_WritePin(ADS1299_2_CS_GPIO_Port, ADS1299_1_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ADS1299_1_CS_GPIO_Port, ADS1299_1_CS_Pin, GPIO_PIN_RESET);
 }
 
 void ADS1299_1_CS_High(void)
 {
-  HAL_GPIO_WritePin(ADS1299_2_CS_GPIO_Port, ADS1299_1_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ADS1299_1_CS_GPIO_Port, ADS1299_1_CS_Pin, GPIO_PIN_SET);
 }
 
 void ADS1299_2_CS_Low(void)
@@ -174,6 +174,11 @@ void ADS1299_2_CS_High(void)
 void ADS1299_Start(void)
 {
   HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_SET);
+}
+
+void ADS1299_Stop(void)
+{
+  HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_RESET);
 }
 
 /* USER CODE END 2 */
