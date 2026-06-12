@@ -21,12 +21,15 @@
 #include "dma.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "ads1299.h"
+#include "tlc59116.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,15 +42,6 @@
 
 #define UART3_CMD_MAX_LEN 64U
 
-#define ADS1299_CMD_WAKEUP 0x02U
-#define ADS1299_CMD_RESET  0x06U
-#define ADS1299_CMD_SDATAC 0x11U
-#define ADS1299_CMD_START  0x08U
-
-#define ADS1299_REG_CONFIG1 0x01U
-#define ADS1299_REG_CONFIG2 0x02U
-#define ADS1299_REG_CONFIG3 0x03U
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,6 +52,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+// 定时器6中断标志
+volatile uint8_t tim6_ready = 0;
 
 static uint8_t g_ch = 0U;
 static uint8_t g_dev = 0U;
@@ -82,57 +79,7 @@ static void MPU_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-/**
- * @brief   初始化第1个ADS1299芯片
- *
- * @return  HAL_StatusTypeDef 初始化状态
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-06-08
- */
-HAL_StatusTypeDef ADS1299_1_Init()
-{
-  // 复位
-  ADS1299_1_Reset();
 
-  // 拉低CS引脚
-  ADS1299_1_CS_Low();
-
-  if (ADS1299_1_SendCmd(ADS1299_CMD_SDATAC) != HAL_OK)
-  {
-    ADS1299_1_CS_High();
-    return HAL_ERROR;
-  }
-
-  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG1, 0x96U) != HAL_OK)
-  {
-    ADS1299_1_CS_High();
-    return HAL_ERROR;
-  }
-
-  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG2, 0xD0U) != HAL_OK)
-  {
-    ADS1299_1_CS_High();
-    return HAL_ERROR;
-  }
-
-  if (ADS1299_1_WriteReg(ADS1299_REG_CONFIG3, 0xE0U) != HAL_OK)
-  {
-    ADS1299_1_CS_High();
-    return HAL_ERROR;
-  }
-
-  if (ADS1299_1_SendCmd(ADS1299_CMD_WAKEUP) != HAL_OK)
-  {
-    ADS1299_1_CS_High();
-    return HAL_ERROR;
-  }
-
-  // 拉高CS引脚
-  ADS1299_1_CS_High();
-  return HAL_OK;
-}
 
 /* USER CODE END 0 */
 
@@ -170,11 +117,26 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_I2C2_Init();
-  MX_SPI1_Init();
   MX_USART3_UART_Init();
+  MX_TIM6_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+
+  HAL_TIM_Base_Start_IT(&htim6);
+
+  // 初始化所有(2个)TLC59116为PWM模式，设置所有通道的PWM值为0
+  TLC59116_Init();
+  
+  TLC59116_1_SetPwm(0, 255);
+
+  // 初始化第1个ADS1299芯片
+  ADS1299_1_Init();
+  // 初始化第2个ADS1299芯片
+  ADS1299_2_Init();
+  // 开始转换
+  ADS1299_Start();
 
   /* USER CODE END 2 */
 
@@ -182,6 +144,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    if (1 == tim6_ready)
+    {
+      tim6_ready = 0;
+      uint8_t packet[32];
+      packet[0] = 0xAA;
+      packet[1] = 0x55;
+      packet[2] = 0x1B;
+      (void)memcpy(&packet[3], spi_ads_1_rx_buffer, 27);
+      packet[30] = 0x0D;
+      packet[31] = 0x0A;
+      HAL_UART_Transmit(&huart3, packet, 32, 100U);
+    }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -260,9 +235,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   // PB0(连接第一个ADS1299的DRDY引脚) 下降沿中断处理逻辑
   if (GPIO_Pin == GPIO_PIN_0)
   {
-    // 将ADS1299_1的CS引脚拉低，准备读取数据寄存器
+    // 将ADS1299_1的CS引脚拉低，读取数据寄存器
     ADS1299_1_CS_Low();
-    
+
     // 读取ADS1299_1的数据寄存器
     HAL_SPI_TransmitReceive_DMA(&hspi1,
                                 spi_tx_buffer,
@@ -312,6 +287,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 
     HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+  }
+}
+
+/**
+  * @brief   TIM6周期溢出回调函数
+  * @param   htim  定时器句柄
+  * @retval  None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM6)
+  {
+    /* TIM6定时中断处理逻辑 */
+    tim6_ready = 1;
   }
 }
 

@@ -396,6 +396,11 @@
           <GroupName>Application/User/Core</GroupName>
           <Files>
             <File>
+              <FileName>tlc59116.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\tlc59116.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/main.c</FilePath>
@@ -745,6 +750,11 @@
               <FileName>stm32h7xx_hal_msp.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32h7xx_hal_msp.c</FilePath>
+            </File>
+            <File>
+              <FileName>ads1299.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\ads1299.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1096,5 +1106,14 @@
     </components>
     <files/>
   </RTE>
+
+  <LayerInfo>
+    <Layers>
+      <Layer>
+        <LayName>firmware-daq-mx-mdk-arm</LayName>
+        <LayPrjMark>1</LayPrjMark>
+      </Layer>
+    </Layers>
+  </LayerInfo>
 
 </Project>
