@@ -40,7 +40,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define UART3_CMD_MAX_LEN 64U
 
 /* USER CODE END PD */
 
@@ -56,11 +55,57 @@
 // 定时器6中断标志
 volatile uint8_t tim6_ready = 0;
 
-static uint8_t g_ch = 0U;
-static uint8_t g_dev = 0U;
+// WIFI命令 USART3 接收缓冲区
 static uint8_t g_uart3_rx_byte = 0U;
-static uint8_t g_uart3_cmd_buf[UART3_CMD_MAX_LEN];
-static uint16_t g_uart3_cmd_len = 0U;
+
+// WIFI命令 USART3 环形缓冲区
+#define UART3_RB_SIZE 64U
+static uint8_t  uart3_rb_buf[UART3_RB_SIZE];
+static volatile uint16_t uart3_rb_head = 0U;
+static volatile uint16_t uart3_rb_tail = 0U;
+
+static void uart3_rb_write(uint8_t data)
+{
+  uint16_t next = (uart3_rb_head + 1U) % UART3_RB_SIZE;
+  if (next != uart3_rb_tail)
+  {
+    uart3_rb_buf[uart3_rb_head] = data;
+    uart3_rb_head = next;
+  }
+}
+
+static uint16_t uart3_rb_read(uint8_t *data)
+{
+  if (uart3_rb_head == uart3_rb_tail)
+  {
+    return 0U;
+  }
+  *data = uart3_rb_buf[uart3_rb_tail];
+  uart3_rb_tail = (uart3_rb_tail + 1U) % UART3_RB_SIZE;
+  return 1U;
+}
+
+uint16_t uart3_rb_available(void)
+{
+  return (UART3_RB_SIZE + uart3_rb_head - uart3_rb_tail) % UART3_RB_SIZE;
+}
+
+// 命令数据包结构
+#define CMD_PACKET_SIZE 29U
+#define CMD_HEADER 0x0A
+
+// 命令解析结果
+typedef struct {
+  uint32_t timestamp;           // 时间戳
+  uint8_t  led_brightness[10];  // 10个灯的亮度
+  uint8_t  channel_mask[10];    // 80个通道的开启标志
+  uint8_t  power_flag;          // 开关机标志
+  uint8_t  storage_flag;        // 离线存储标志
+  uint8_t  sample_rate;         // 采样率
+  uint8_t  start_flag;          // 开始采样标志
+} CmdPacket;
+
+static CmdPacket g_cmd_packet;
 
 // SPI ADS1299
 uint8_t spi_tx_buffer[27] = {0};  // 全 0x00，产生 SCLK
@@ -144,6 +189,66 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    // 
+    // 处理WIFI串口命令（固定29字节二进制格式）
+    if (uart3_rb_available() >= CMD_PACKET_SIZE)
+    {
+      uint8_t packet[CMD_PACKET_SIZE];
+      
+      // 先检查头字节
+      uint8_t header;
+      uart3_rb_read(&header);
+      
+      if (header == CMD_HEADER)
+      {
+        // 头字节正确，读取剩余数据
+        packet[0] = header;
+        for (uint16_t i = 1; i < CMD_PACKET_SIZE; i++)
+        {
+          uart3_rb_read(&packet[i]);
+        }
+        
+        // 解析数据包
+        // 字节1-4: 时间戳（小端序）
+        g_cmd_packet.timestamp = (uint32_t)packet[1] | 
+                                ((uint32_t)packet[2] << 8) | 
+                                ((uint32_t)packet[3] << 16) | 
+                                ((uint32_t)packet[4] << 24);
+        
+        // 字节5-14: 10个灯的亮度
+        for (uint8_t i = 0; i < 10; i++)
+        {
+          g_cmd_packet.led_brightness[i] = packet[5 + i];
+        }
+        
+        // 字节15-24: 80个通道的开启标志（10字节=80位）
+        for (uint8_t i = 0; i < 10; i++)
+        {
+          g_cmd_packet.channel_mask[i] = packet[15 + i];
+        }
+        
+        // 字节25: 开关机标志
+        g_cmd_packet.power_flag = packet[25];
+        
+        // 字节26: 离线存储标志
+        g_cmd_packet.storage_flag = packet[26];
+        
+        // 字节27: 采样率
+        g_cmd_packet.sample_rate = packet[27];
+        
+        // 字节28: 开始采样标志
+        g_cmd_packet.start_flag = packet[28];
+        
+        // 发送确认
+        HAL_UART_Transmit(&huart3, (uint8_t*)"ACK\r\n", 5, 10U);
+      }
+      else
+      {
+        // 头字节不正确，丢弃
+        HAL_UART_Transmit(&huart3, (uint8_t*)"ERR\r\n", 5, 10U);
+      }
+    }
+
     if (1 == tim6_ready)
     {
       tim6_ready = 0;
@@ -259,33 +364,18 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
   }
 }
 
+/**
+  * @brief   处理USART3的接收中断，USART3用于与WIFI模块通信
+  * @param   huart  UART句柄
+  * @retval  None
+  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+  // 处理USART3的接收中断，USART3用于与WIFI模块通信
   if (huart->Instance == USART3)
   {
-    uint8_t ch = g_uart3_rx_byte;
-
-    if ((ch == '\r') || (ch == '\n'))
-    {
-      if (g_uart3_cmd_len > 0U)
-      {
-        (void)HAL_UART_Transmit(&huart3, g_uart3_cmd_buf, g_uart3_cmd_len, 10U);
-        g_uart3_cmd_len = 0U;
-      }
-    }
-    else
-    {
-      if (g_uart3_cmd_len < UART3_CMD_MAX_LEN)
-      {
-        g_uart3_cmd_buf[g_uart3_cmd_len] = ch;
-        g_uart3_cmd_len++;
-      }
-      else
-      {
-        g_uart3_cmd_len = 0U;
-      }
-    }
-
+    // 将数据写入环形缓冲区
+    uart3_rb_write(g_uart3_rx_byte);
     HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
   }
 }
@@ -299,7 +389,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM6)
   {
-    /* TIM6定时中断处理逻辑 */
+    /* 设置定时器6中断标志位 */
     tim6_ready = 1;
   }
 }
