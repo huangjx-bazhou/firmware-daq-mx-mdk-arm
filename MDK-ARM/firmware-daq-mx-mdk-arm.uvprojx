@@ -401,6 +401,11 @@
               <FilePath>..\Core\Src\tlc59116.c</FilePath>
             </File>
             <File>
+              <FileName>ads1299.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\ads1299.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/main.c</FilePath>
@@ -752,9 +757,14 @@
               <FilePath>../Core/Src/stm32h7xx_hal_msp.c</FilePath>
             </File>
             <File>
-              <FileName>ads1299.c</FileName>
+              <FileName>ringbuffer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Core\Src\ads1299.c</FilePath>
+              <FilePath>..\Core\Src\ringbuffer.c</FilePath>
+            </File>
+            <File>
+              <FileName>parsecmd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\parsecmd.c</FilePath>
             </File>
           </Files>
         </Group>

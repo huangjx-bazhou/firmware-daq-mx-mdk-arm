@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    usart.h
+  * @file    ringbuffer.h
   * @brief   This file contains all the function prototypes for
-  *          the usart.c file
+  *          the ringbuffer.c file
   ******************************************************************************
   * @attention
   *
@@ -18,8 +18,8 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USART_H__
-#define __USART_H__
+#ifndef __RINGBUFFER_H__
+#define __RINGBUFFER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,28 +28,40 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* USER CODE BEGIN Includes */
+/*
+ * @brief 写入数据到环形缓冲区
+ * @param data 要写入的数据
+ * @return void
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-17
+*/
+void rb_write(uint8_t data);
 
-/* USER CODE END Includes */
+/*
+ * @brief 从环形缓冲区读取数据
+ * @param data 读取到的数据指针
+ * @return uint8_t 读取到的数据长度
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-17
+*/
+uint8_t rb_read(uint8_t *data);
 
-extern UART_HandleTypeDef huart1;
-
-extern UART_HandleTypeDef huart3;
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-void MX_USART1_UART_Init(void);
-void MX_USART3_UART_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
+/*
+ * @brief 获取环形缓冲区中可用的字节数
+ * @return uint8_t 可用的字节数
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-17
+*/
+uint8_t rb_available(void);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __USART_H__ */
+#endif /*__RINGBUFFER_H__ */
 

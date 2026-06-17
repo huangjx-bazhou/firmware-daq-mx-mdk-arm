@@ -59,12 +59,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define Power_Pin GPIO_PIN_13
 #define Power_GPIO_Port GPIOC
+#define ADS1299_2_DRDY_Pin GPIO_PIN_0
+#define ADS1299_2_DRDY_GPIO_Port GPIOA
 #define ADS1299_1_CS_Pin GPIO_PIN_3
 #define ADS1299_1_CS_GPIO_Port GPIOA
 #define ADS1299_2_RESET_Pin GPIO_PIN_5
 #define ADS1299_2_RESET_GPIO_Port GPIOA
 #define TLC59116_2_RESET_Pin GPIO_PIN_6
 #define TLC59116_2_RESET_GPIO_Port GPIOA
+#define ADS1299_1_DRDY_Pin GPIO_PIN_0
+#define ADS1299_1_DRDY_GPIO_Port GPIOB
 #define ADS1299_START_Pin GPIO_PIN_8
 #define ADS1299_START_GPIO_Port GPIOE
 #define TLC59116_1_RESET_Pin GPIO_PIN_12

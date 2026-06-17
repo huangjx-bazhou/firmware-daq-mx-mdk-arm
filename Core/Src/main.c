@@ -24,12 +24,14 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include "ads1299.h"
-#include "tlc59116.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "ads1299.h"
+#include "tlc59116.h"
+#include "ringbuffer.h"
+#include "parsecmd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +41,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 
 /* USER CODE END PD */
 
@@ -52,65 +53,21 @@
 
 /* USER CODE BEGIN PV */
 
-// 定时器6中断标志
-volatile uint8_t tim6_ready = 0;
+// 定时器6中断标志(0: 未中断, 1: 中断)
+static volatile uint8_t tim6_ready = 0U;
 
-// WIFI命令 USART3 接收缓冲区
-static uint8_t g_uart3_rx_byte = 0U;
-
-// WIFI命令 USART3 环形缓冲区
-#define UART3_RB_SIZE 64U
-static uint8_t  uart3_rb_buf[UART3_RB_SIZE];
-static volatile uint16_t uart3_rb_head = 0U;
-static volatile uint16_t uart3_rb_tail = 0U;
-
-static void uart3_rb_write(uint8_t data)
-{
-  uint16_t next = (uart3_rb_head + 1U) % UART3_RB_SIZE;
-  if (next != uart3_rb_tail)
-  {
-    uart3_rb_buf[uart3_rb_head] = data;
-    uart3_rb_head = next;
-  }
-}
-
-static uint16_t uart3_rb_read(uint8_t *data)
-{
-  if (uart3_rb_head == uart3_rb_tail)
-  {
-    return 0U;
-  }
-  *data = uart3_rb_buf[uart3_rb_tail];
-  uart3_rb_tail = (uart3_rb_tail + 1U) % UART3_RB_SIZE;
-  return 1U;
-}
-
-uint16_t uart3_rb_available(void)
-{
-  return (UART3_RB_SIZE + uart3_rb_head - uart3_rb_tail) % UART3_RB_SIZE;
-}
-
-// 命令数据包结构
-#define CMD_PACKET_SIZE 29U
-#define CMD_HEADER 0x0A
-
-// 命令解析结果
-typedef struct {
-  uint32_t timestamp;           // 时间戳
-  uint8_t  led_brightness[10];  // 10个灯的亮度
-  uint8_t  channel_mask[10];    // 80个通道的开启标志
-  uint8_t  power_flag;          // 开关机标志
-  uint8_t  storage_flag;        // 离线存储标志
-  uint8_t  sample_rate;         // 采样率
-  uint8_t  start_flag;          // 开始采样标志
-} CmdPacket;
-
-static CmdPacket g_cmd_packet;
+// USART3接收缓冲区(WIFI)
+static uint8_t g_usart3_rx_byte = 0U;
 
 // SPI ADS1299
 uint8_t spi_tx_buffer[27] = {0};  // 全 0x00，产生 SCLK
 uint8_t spi_ads_1_rx_buffer[27];  // 第一个ADS1299接收缓冲区
 uint8_t spi_ads_2_rx_buffer[27];  // 第二个ADS1299接收缓冲区
+
+// 逐字节读取并验证头字节
+static uint8_t cmd_state = 0;  // 0:等待第一个头字节, 1:等待第二个头字节, 2:读取数据
+static uint8_t cmd_buf[CMD_PACKET_SIZE];  // CMD_PACKET_SIZE已包括2字节头
+static uint16_t cmd_len = 0;
 
 /* USER CODE END PV */
 
@@ -119,12 +76,37 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
+/**
+  * @brief  初始化DWT计时器
+  */
+static void DWT_Init(void);
+
+/**
+  * @brief  延时指定微秒数
+  * @param us 微秒数
+  */
+void delay_us(uint32_t us);
+
+/**
+  * @brief  检查指定位是否为1
+  * @param value 要检查的8位值
+  * @param bit 要检查的位（0-7）
+  * @return uint8_t 位为1则返回1，否则返回0
+  */
+uint8_t is_bit_set(uint8_t value, uint8_t bit);
+
+/**
+  * @brief  根据采样率配置定时器6
+  * @param rate 采样率（Hz）
+  * @param new_psc 新的预分频器值（0-65535）
+  * @param new_arr 新的自动重载值（0-65535）
+  */
+static void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* new_arr);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
 
 /* USER CODE END 0 */
 
@@ -163,25 +145,23 @@ int main(void)
   MX_DMA_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
-  MX_TIM6_Init();
   MX_SPI1_Init();
+  MX_USART1_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+  DWT_Init();
+
+  HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
 
   HAL_TIM_Base_Start_IT(&htim6);
 
   // 初始化所有(2个)TLC59116为PWM模式，设置所有通道的PWM值为0
   TLC59116_Init();
-  
-  TLC59116_1_SetPwm(0, 255);
-
   // 初始化第1个ADS1299芯片
   ADS1299_1_Init();
   // 初始化第2个ADS1299芯片
   ADS1299_2_Init();
-  // 开始转换
-  ADS1299_Start();
 
   /* USER CODE END 2 */
 
@@ -189,77 +169,205 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // 
-    // 处理WIFI串口命令（固定29字节二进制格式）
-    if (uart3_rb_available() >= CMD_PACKET_SIZE)
+    // 1.处理WIFI串口命令
+    if (rb_available() > 0)
     {
-      uint8_t packet[CMD_PACKET_SIZE];
-      
-      // 先检查头字节
-      uint8_t header;
-      uart3_rb_read(&header);
-      
-      if (header == CMD_HEADER)
+      uint8_t byte;
+      rb_read(&byte);
+
+      switch (cmd_state)
       {
-        // 头字节正确，读取剩余数据
-        packet[0] = header;
-        for (uint16_t i = 1; i < CMD_PACKET_SIZE; i++)
-        {
-          uart3_rb_read(&packet[i]);
-        }
-        
-        // 解析数据包
-        // 字节1-4: 时间戳（小端序）
-        g_cmd_packet.timestamp = (uint32_t)packet[1] | 
-                                ((uint32_t)packet[2] << 8) | 
-                                ((uint32_t)packet[3] << 16) | 
-                                ((uint32_t)packet[4] << 24);
-        
-        // 字节5-14: 10个灯的亮度
-        for (uint8_t i = 0; i < 10; i++)
-        {
-          g_cmd_packet.led_brightness[i] = packet[5 + i];
-        }
-        
-        // 字节15-24: 80个通道的开启标志（10字节=80位）
-        for (uint8_t i = 0; i < 10; i++)
-        {
-          g_cmd_packet.channel_mask[i] = packet[15 + i];
-        }
-        
-        // 字节25: 开关机标志
-        g_cmd_packet.power_flag = packet[25];
-        
-        // 字节26: 离线存储标志
-        g_cmd_packet.storage_flag = packet[26];
-        
-        // 字节27: 采样率
-        g_cmd_packet.sample_rate = packet[27];
-        
-        // 字节28: 开始采样标志
-        g_cmd_packet.start_flag = packet[28];
-        
-        // 发送确认
-        HAL_UART_Transmit(&huart3, (uint8_t*)"ACK\r\n", 5, 10U);
-      }
-      else
-      {
-        // 头字节不正确，丢弃
-        HAL_UART_Transmit(&huart3, (uint8_t*)"ERR\r\n", 5, 10U);
+        case 0:
+          if (byte == 0x84)  // 第一个头字节
+          {
+            cmd_buf[0] = byte;
+            cmd_state = 1;
+          }
+          break;
+          
+        case 1:
+          if (byte == 0x6F)  // 第二个头字节
+          {
+            cmd_buf[1] = byte;
+            cmd_state = 2;
+            cmd_len = 2;  // 已写入2字节头
+          }
+          else
+          {
+            cmd_state = 0;  // 头不匹配，重新开始
+          }
+          break;
+          
+        case 2:
+          cmd_buf[cmd_len++] = byte;
+          if (cmd_len >= CMD_PACKET_SIZE)
+          {
+            parse_cmd(cmd_buf);  // 传递完整数据包（包括头）
+            HAL_UART_Transmit(&huart3, cmd_buf, cmd_len, HAL_MAX_DELAY);
+            cmd_state = 0;  // 解析完成，重新等待头
+          }
+          break;
       }
     }
 
-    if (1 == tim6_ready)
+    // 2. 处理离线存储标志改变标志
+    if (1 == g_storage_flag_changed)
+    {
+      g_storage_flag_changed = 0;
+    }
+
+    // 3. 处理采样率改变标志
+    if (1 == g_sample_rate_changed)
+    {
+      g_sample_rate_changed = 0;
+      
+      // 新的预分频器值
+      uint16_t new_psc = 0U;
+      // 新的自动重载值
+      uint16_t new_arr = 0U;
+
+      // 配置定时器6的采样率
+      configure_tim6_for_sample_rate(g_sample_rate, &new_psc, &new_arr);
+
+      // 采样率改变，更新定时器6的周期
+      __HAL_TIM_SET_PRESCALER(&htim6, new_psc);
+      __HAL_TIM_SET_AUTORELOAD(&htim6, new_arr);
+      HAL_TIM_GenerateEvent(&htim6, TIM_EVENTSOURCE_UPDATE);
+    }
+
+    // 4. 处理开始采样标志改变标志
+    if (1 == g_start_flag_changed)
+    {
+      g_start_flag_changed = 0;
+
+      if (CMD_ENABLE_FLAG == g_start_flag)
+      {
+        // 开始采样
+        ADS1299_Start();
+      }
+      else
+      {
+        // 停止采样
+        ADS1299_Stop();
+      } 
+    }
+
+    // 5.定时器6中断处理
+    if (1 == tim6_ready && CMD_ENABLE_FLAG == g_start_flag)
     {
       tim6_ready = 0;
-      uint8_t packet[32];
-      packet[0] = 0xAA;
-      packet[1] = 0x55;
-      packet[2] = 0x1B;
-      (void)memcpy(&packet[3], spi_ads_1_rx_buffer, 27);
-      packet[30] = 0x0D;
-      packet[31] = 0x0A;
-      HAL_UART_Transmit(&huart3, packet, 32, 100U);
+      
+      // 循环开启TLC59116-1的16个通道
+      for (uint8_t ch = 0; ch < LED_COUNT; ch++)
+      {
+        // 第几个LED
+        uint8_t led = ch / 2;
+
+        // 开启LED
+        TLC59116_1_SetPwm(ch, g_led_brightness[led]);
+
+        // 延时5us
+        delay_us(5);
+
+        uint8_t ads1 =  g_channel_mask[led * 2];
+
+        uint8_t ads2 =  g_channel_mask[led * 2 + 1];
+
+        // led与ads1建立了通道
+        if (ads1 != 0)
+        {
+          // 等待PB0为低电平
+          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
+          {
+          }
+
+          // 选择第一个ADS1299芯片
+          ADS1299_1_CS_Low();
+
+          // 读取ADS12991数据寄存器
+          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+
+          ADS1299_1_CS_High();
+        }
+
+        // led与ads2建立了通道
+        if (ads2 != 0)
+        {
+          // 等待PA0为低电平
+          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+          {
+          }
+
+          // 选择第一个ADS1299芯片
+          ADS1299_2_CS_Low(); 
+
+          // 读取ADS12992数据寄存器
+          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
+
+          ADS1299_2_CS_High();
+        }
+
+        // TODO: 根据通道建立，组装数据
+
+        // 关闭LED
+        TLC59116_1_SetPwm(ch, 0);
+      }
+
+      // 循环开启TLC59116-2的16个通道
+      for (uint8_t ch = 0; ch < LED_COUNT; ch++)
+      {
+        // 第几个LED
+        uint8_t led = ch / 2;
+
+        // 开启LED
+        TLC59116_2_SetPwm(ch, g_led_brightness[8 + led]);
+
+        // 延时5us
+        delay_us(5);
+
+        uint8_t ads1 =  g_channel_mask[led * 2];
+
+        uint8_t ads2 =  g_channel_mask[led * 2 + 1];
+
+        // led与ads1建立了通道
+        if (ads1 != 0)
+        {
+          // 等待PB0为低电平
+          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
+          {
+          }
+
+          // 选择第一个ADS1299芯片
+          ADS1299_1_CS_Low();
+
+          // 读取ADS12991数据寄存器
+          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+
+          ADS1299_1_CS_High();
+        }
+
+        // led与ads2建立了通道
+        if (ads2 != 0)
+        {
+          // 等待PA0为低电平
+          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+          {
+          }
+
+          // 选择第一个ADS1299芯片
+          ADS1299_2_CS_Low(); 
+
+          // 读取ADS12992数据寄存器
+          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
+
+          ADS1299_2_CS_High();
+        }
+
+        // TODO: 根据通道建立，组装数据
+
+        // 关闭LED
+        TLC59116_2_SetPwm(ch, 0);
+      }
     }
 
     /* USER CODE END WHILE */
@@ -297,13 +405,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 9;
+  RCC_OscInitStruct.PLL.PLLN = 10;
   RCC_OscInitStruct.PLL.PLLP = 2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOMEDIUM;
-  RCC_OscInitStruct.PLL.PLLFRACN = 3072;
+  RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -319,7 +427,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
@@ -329,6 +437,59 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void DWT_Init(void)
+{
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+    DWT->CYCCNT = 0;
+}
+
+void delay_us(uint32_t us)
+{
+    uint32_t start = DWT->CYCCNT;
+    uint32_t ticks = us * (SystemCoreClock / 1000000U);
+
+    while ((int32_t)(DWT->CYCCNT - start) < (int32_t)ticks);
+}
+
+uint8_t is_bit_set(uint8_t value, uint8_t bit)
+{
+    if (bit > 7) return 0;  // 8位范围检查
+    return (value & (1 << bit)) != 0;
+}
+
+/**
+  * @brief   配置定时器6的采样率
+  * @param   rate  采样率，单位为Hz
+  * @retval  None
+  */
+void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* new_arr)
+{
+  // 定时器时钟为64MHz
+  // 定时器频率 = 定时器时钟 / ((PSC + 1) * (ARR + 1))
+  
+  if (rate == 0) rate = 10;  // 默认10Hz
+  
+  if (rate <= 100)
+  {
+    // 低采样率：使用较大的预分频
+    *new_psc = 6399;   // Prescaler = 6399，定时器时钟 = 64MHz / 6400 = 10kHz
+    *new_arr = (10000 / rate) - 1;
+  }
+  else if (rate <= 1000)
+  {
+    // 中采样率
+    *new_psc = 639;    // Prescaler = 639，定时器时钟 = 64MHz / 640 = 100kHz
+    *new_arr = (100000 / rate) - 1;
+  }
+  else
+  {
+    // 高采样率
+    *new_psc = 63;     // Prescaler = 63，定时器时钟 = 64MHz / 64 = 1MHz
+    *new_arr = (1000000 / rate) - 1;
+  }
+}
 
 /**
   * @brief   处理GPIO外部中断，连接ADS1299芯片的DRDY引脚，当DRDY引脚拉低时，触发中断，读取数据寄存器的内容
@@ -375,8 +536,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == USART3)
   {
     // 将数据写入环形缓冲区
-    uart3_rb_write(g_uart3_rx_byte);
-    HAL_UART_Receive_IT(&huart3, &g_uart3_rx_byte, 1U);
+    rb_write(g_usart3_rx_byte);  
+    HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
   }
 }
 

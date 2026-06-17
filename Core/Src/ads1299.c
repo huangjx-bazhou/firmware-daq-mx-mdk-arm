@@ -124,7 +124,7 @@ void ADS1299_1_Init(void)
   for (uint8_t ch = 0; ch < 8; ch++)
     {
     // 0x60 = 增益24, 0x05 = 输入选择内部测试信号
-    ADS1299_WriteReg(0x05 + ch, 0x01);
+    ADS1299_WriteReg(0x05 + ch, 0x00);
   }
 
 	ADS1299_SendCmd(ADS1299_CMD_RDATAC);

@@ -79,6 +79,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Power_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ADS1299_2_DRDY_Pin */
+  GPIO_InitStruct.Pin = ADS1299_2_DRDY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(ADS1299_2_DRDY_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : ADS1299_1_CS_Pin TLC59116_2_RESET_Pin */
   GPIO_InitStruct.Pin = ADS1299_1_CS_Pin|TLC59116_2_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -93,11 +99,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ADS1299_2_RESET_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  /*Configure GPIO pin : ADS1299_1_DRDY_Pin */
+  GPIO_InitStruct.Pin = ADS1299_1_DRDY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(ADS1299_1_DRDY_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ADS1299_START_Pin */
   GPIO_InitStruct.Pin = ADS1299_START_Pin;
@@ -126,10 +132,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ADS1299_1_RESET_GPIO_Port, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 }
 
