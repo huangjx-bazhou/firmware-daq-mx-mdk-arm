@@ -263,26 +263,32 @@ int main(void)
         // 第几个LED
         uint8_t led = ch / 2;
 
+        uint8_t ads1 =  g_channel_mask[led * 2];
+
+        uint8_t ads2 =  g_channel_mask[led * 2 + 1];
+
+        // 如果没有建立通道，跳过开启LED
+        if (ads1 == 0 && ads2 == 0)
+        {
+          continue;
+        }
+
         // 开启LED
         TLC59116_1_SetPwm(ch, g_led_brightness[led]);
 
         // 延时5us
         delay_us(5);
 
-        uint8_t ads1 =  g_channel_mask[led * 2];
-
-        uint8_t ads2 =  g_channel_mask[led * 2 + 1];
-
         // led与ads1建立了通道
         if (ads1 != 0)
         {
+          // 选择第一个ADS1299芯片
+          ADS1299_1_CS_Low();
+
           // 等待PB0为低电平
           while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
           }
-
-          // 选择第一个ADS1299芯片
-          ADS1299_1_CS_Low();
 
           // 读取ADS12991数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
@@ -293,13 +299,13 @@ int main(void)
         // led与ads2建立了通道
         if (ads2 != 0)
         {
+          // 选择第一个ADS1299芯片
+          ADS1299_2_CS_Low(); 
+
           // 等待PA0为低电平
           while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
           }
-
-          // 选择第一个ADS1299芯片
-          ADS1299_2_CS_Low(); 
 
           // 读取ADS12992数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
@@ -319,26 +325,32 @@ int main(void)
         // 第几个LED
         uint8_t led = ch / 2;
 
+        uint8_t ads1 =  g_channel_mask[16 + led * 2];
+
+        uint8_t ads2 =  g_channel_mask[16 + led * 2 + 1];
+
+        // 如果没有建立通道，跳过开启LED
+        if (ads1 == 0 && ads2 == 0)
+        {
+          continue;
+        }
+
         // 开启LED
         TLC59116_2_SetPwm(ch, g_led_brightness[8 + led]);
 
         // 延时5us
         delay_us(5);
 
-        uint8_t ads1 =  g_channel_mask[led * 2];
-
-        uint8_t ads2 =  g_channel_mask[led * 2 + 1];
-
         // led与ads1建立了通道
         if (ads1 != 0)
         {
+          // 选择第一个ADS1299芯片
+          ADS1299_1_CS_Low();
+
           // 等待PB0为低电平
           while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
           }
-
-          // 选择第一个ADS1299芯片
-          ADS1299_1_CS_Low();
 
           // 读取ADS12991数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
@@ -349,13 +361,13 @@ int main(void)
         // led与ads2建立了通道
         if (ads2 != 0)
         {
+          // 选择第一个ADS1299芯片
+          ADS1299_2_CS_Low(); 
+
           // 等待PA0为低电平
           while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
           }
-
-          // 选择第一个ADS1299芯片
-          ADS1299_2_CS_Low(); 
 
           // 读取ADS12992数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
