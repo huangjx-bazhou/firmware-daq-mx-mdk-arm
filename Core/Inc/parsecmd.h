@@ -31,6 +31,9 @@ extern "C" {
 // LED数量，两个TLC59116，每个连接8个LED
 #define LED_COUNT 16U
 
+// 每个LED的通道数量（每个LED有2个波长的通道）
+#define CHANNEL_COUNT_PER_LED 2U
+
 // 接收器数量，两个ADS1299，每个连接8个接收器
 #define RECVIVER_COUNT 16U
 

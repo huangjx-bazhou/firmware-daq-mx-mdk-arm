@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -69,6 +68,21 @@ static uint8_t cmd_state = 0;  // 0:等待第一个头字节, 1:等待第二个�
 static uint8_t cmd_buf[CMD_PACKET_SIZE];  // CMD_PACKET_SIZE已包括2字节头
 static uint16_t cmd_len = 0;
 
+// ADS1299数据
+static int32_t g_ads_data[LED_COUNT * RECVIVER_COUNT * CHANNEL_COUNT_PER_LED];
+
+// 数据个数
+static uint16_t g_ads_data_count = 0U;
+
+// 采集索引
+static uint8_t g_sample_idx = 0U;
+
+// 数据包序号
+static uint32_t g_packet_num = 0U;
+
+// 数据包,需要发送到上位机
+static uint8_t g_packet[8192];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,6 +116,15 @@ uint8_t is_bit_set(uint8_t value, uint8_t bit);
   * @param new_arr 新的自动重载值（0-65535）
   */
 static void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* new_arr);
+
+static int32_t ads1299_24_to_32(const uint8_t raw[3])
+{
+    return ((int32_t)(
+        ((uint32_t)raw[0] << 24) |
+        ((uint32_t)raw[1] << 16) |
+        ((uint32_t)raw[2] <<  8)
+    )) >> 8;
+}
 
 /* USER CODE END PFP */
 
@@ -142,7 +165,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
   MX_SPI1_Init();
@@ -247,7 +269,9 @@ int main(void)
       }
       else
       {
-        // 停止采样
+        g_packet_num = 0;
+
+          // 停止采样
         ADS1299_Stop();
       } 
     }
@@ -294,6 +318,16 @@ int main(void)
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
 
           ADS1299_1_CS_High();
+
+          for (uint8_t i = 0; i < 8; i++)
+          {
+            uint8_t set = is_bit_set(ads1, i);
+            if (1 == set)
+            {
+              int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
+              g_ads_data[g_ads_data_count++] = value;
+            }
+          }
         }
 
         // led与ads2建立了通道
@@ -311,9 +345,17 @@ int main(void)
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
 
           ADS1299_2_CS_High();
-        }
 
-        // TODO: 根据通道建立，组装数据
+          for (uint8_t i = 0; i < 8; i++)
+          {
+            uint8_t set = is_bit_set(ads2, i);
+            if (1 == set)
+            {
+              int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
+              g_ads_data[g_ads_data_count++] = value;
+            }
+          }
+        }
 
         // 关闭LED
         TLC59116_1_SetPwm(ch, 0);
@@ -356,6 +398,16 @@ int main(void)
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
 
           ADS1299_1_CS_High();
+
+          for (uint8_t i = 0; i < 8; i++)
+          {
+            uint8_t set = is_bit_set(ads1, i);
+            if (1 == set)
+            {
+              int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
+              g_ads_data[g_ads_data_count++] = value;
+            }
+          }
         }
 
         // led与ads2建立了通道
@@ -373,13 +425,59 @@ int main(void)
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
 
           ADS1299_2_CS_High();
-        }
 
-        // TODO: 根据通道建立，组装数据
+          for (uint8_t i = 0; i < 8; i++)
+          {
+            uint8_t set = is_bit_set(ads2, i);
+            if (1 == set)
+            {
+              int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
+              g_ads_data[g_ads_data_count++] = value;
+            }
+          }
+        }
 
         // 关闭LED
         TLC59116_2_SetPwm(ch, 0);
       }
+
+      g_sample_idx++;
+    }
+
+    // 已经采了3次数据了，该发送了
+    if (g_sample_idx >= 1)
+    {
+      g_sample_idx = 0;
+
+      // 数据头和型号
+      g_packet[0] = 0x84U;
+      g_packet[1] = 0x6FU;
+      g_packet[2] = 0x0BU;
+      
+      // 数据个数
+      memcpy(g_packet + 3, &g_ads_data_count, sizeof(g_ads_data_count));
+
+      // 数据包序号
+      memcpy(g_packet + 5, &g_packet_num, sizeof(g_packet_num));
+
+      g_packet[9] = 0x00U;
+      g_packet[10] = 0x00U;
+      g_packet[11] = 0x00U;
+      g_packet[12] = 0x00U;
+
+      // 复制数据
+      memcpy(g_packet + 13, &g_ads_data, 4 * g_ads_data_count);
+
+      // TODO: 处理数据陀螺仪，电量，打标数据
+
+      // 发送数据
+      HAL_UART_Transmit(&huart3, g_packet, 13 + g_ads_data_count * 4, HAL_MAX_DELAY);
+  
+      // 发送完毕，重置数据个数，从头开始写数据
+      g_ads_data_count = 0;
+
+      // 每发送一次数据，序号加1
+      g_packet_num++;
     }
 
     /* USER CODE END WHILE */
