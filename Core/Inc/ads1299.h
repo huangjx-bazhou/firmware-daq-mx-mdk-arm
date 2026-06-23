@@ -31,6 +31,12 @@ extern "C" {
 
 /* USER CODE BEGIN Prototypes */
 
+extern uint8_t spi_tx_buffer[27];
+extern uint8_t ads_1_origin_rx_buffer[27];
+extern uint8_t ads_2_origin_rx_buffer[27];
+extern int32_t ads_1_origin[8];
+extern int32_t ads_2_origin[8];
+
 /**
  * @brief   复位第1个ADS1299芯片
  *
@@ -57,7 +63,7 @@ void ADS1299_2_Reset(void);
 
 /**
  * @brief   将第1个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
- * 
+ *
  * 第1个ADS1299芯片的CS引脚连接到PA3
  *
  * @author  黄佳兴
@@ -68,7 +74,7 @@ void ADS1299_1_CS_Low(void);
 
 /**
  * @brief   将第1个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
- * 
+ *
  * 第1个ADS1299芯片的CS引脚连接到PA3
  *
  * @author  黄佳兴
@@ -79,7 +85,7 @@ void ADS1299_1_CS_High(void);
 
 /**
  * @brief   将第2个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
- * 
+ *
  * 第2个ADS1299芯片的CS引脚连接到PD7
  *
  * @author  黄佳兴
@@ -90,7 +96,7 @@ void ADS1299_2_CS_Low(void);
 
 /**
  * @brief   将第2个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
- * 
+ *
  * 第2个ADS1299芯片的CS引脚连接到PD7
  *
  * @author  黄佳兴
@@ -100,24 +106,20 @@ void ADS1299_2_CS_Low(void);
 void ADS1299_2_CS_High(void);
 
 /**
- * @brief 开始2个ADS1299芯片的采集
- *
- * 两个ADS1299的START引脚拉高，都与MCU的PE8引脚连接
+ * @brief 开始ADS1299芯片的采集，通过SPI发送命令字节
  *
  * @author  黄佳兴
  * @version 0.1
- * @date    2026-06-05
+ * @date    2026-06-22
  */
 void ADS1299_Start(void);
 
 /**
- * @brief 停止2个ADS1299芯片的采集
- *
- * 两个ADS1299的START引脚拉低，都与MCU的PE8引脚连接
+ * @brief 停止ADS1299芯片的采集，通过SPI发送命令字节
  *
  * @author  黄佳兴
  * @version 0.1
- * @date    2026-06-09
+ * @date    2026-06-22
  */
 void ADS1299_Stop(void);
 
@@ -180,7 +182,25 @@ void ADS1299_1_Init(void);
  * @date    2026-06-12
  */
 void ADS1299_2_Init(void);
-  
+
+/**
+ * @brief   将不开LED读取的数据定义为原点数据，读取第1个ADS1299芯片的原点数据
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-22
+ */
+void ADS1299_1_Origin_Read(void);
+
+/**
+ * @brief   将不开LED读取的数据定义为原点数据，读取第1个ADS1299芯片的原点数据
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-22
+ */
+void ADS1299_2_Origin_Read(void);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

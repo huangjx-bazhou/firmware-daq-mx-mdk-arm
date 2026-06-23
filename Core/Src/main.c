@@ -40,7 +40,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define CALIBRATE_FREQUENCY 15000U // 校准频率每15000次校准一次
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,15 +53,20 @@
 /* USER CODE BEGIN PV */
 
 // 定时器6中断标志(0: 未中断, 1: 中断)
-static volatile uint8_t tim6_ready = 0U;
+static volatile uint16_t g_tim6_ready = 0U;
+
+// 定时器6中断计数
+static uint16_t g_tim6_ready_count = 0U;
 
 // USART3接收缓冲区(WIFI)
 static uint8_t g_usart3_rx_byte = 0U;
 
 // SPI ADS1299
-uint8_t spi_tx_buffer[27] = {0};  // 全 0x00，产生 SCLK
 uint8_t spi_ads_1_rx_buffer[27];  // 第一个ADS1299接收缓冲区
 uint8_t spi_ads_2_rx_buffer[27];  // 第二个ADS1299接收缓冲区
+
+uint8_t spi_ads_1_origin_rx_buffer[27];
+uint8_t spi_ads_2_origin_rx_buffer[27];
 
 // 逐字节读取并验证头字节
 static uint8_t cmd_state = 0;  // 0:等待第一个头字节, 1:等待第二个头字节, 2:读取数据
@@ -206,7 +211,7 @@ int main(void)
             cmd_state = 1;
           }
           break;
-          
+
         case 1:
           if (byte == 0x6F)  // 第二个头字节
           {
@@ -219,7 +224,7 @@ int main(void)
             cmd_state = 0;  // 头不匹配，重新开始
           }
           break;
-          
+
         case 2:
           cmd_buf[cmd_len++] = byte;
           if (cmd_len >= CMD_PACKET_SIZE)
@@ -242,7 +247,7 @@ int main(void)
     if (1 == g_sample_rate_changed)
     {
       g_sample_rate_changed = 0;
-      
+
       // 新的预分频器值
       uint16_t new_psc = 0U;
       // 新的自动重载值
@@ -264,23 +269,30 @@ int main(void)
 
       if (CMD_ENABLE_FLAG == g_start_flag)
       {
-        // 开始采样
-        ADS1299_Start();
+        // 当开始采样时，读取一次没有开LED时的原始数据
+        //ADS1299_1_Origin_Read();
+        //ADS1299_1_Origin_Read();
       }
       else
       {
         g_packet_num = 0;
-
-          // 停止采样
-        ADS1299_Stop();
-      } 
+        g_tim6_ready_count = 0;
+      }
     }
 
     // 5.定时器6中断处理
-    if (1 == tim6_ready && CMD_ENABLE_FLAG == g_start_flag)
+    if (1 == g_tim6_ready && CMD_ENABLE_FLAG == g_start_flag)
     {
-      tim6_ready = 0;
-      
+      g_tim6_ready = 0;
+      g_tim6_ready_count++;
+
+      if (g_tim6_ready_count >= CALIBRATE_FREQUENCY)
+      {
+        g_tim6_ready_count = 0;
+        //ADS1299_1_Origin_Read();
+        //ADS1299_1_Origin_Read();
+      }
+
       // 循环开启TLC59116-1的16个通道
       for (uint8_t ch = 0; ch < LED_COUNT; ch++)
       {
@@ -309,6 +321,9 @@ int main(void)
           // 选择第一个ADS1299芯片
           ADS1299_1_CS_Low();
 
+          // 开启采集
+          ADS1299_Start();
+
           // 等待PB0为低电平
           while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
@@ -316,6 +331,9 @@ int main(void)
 
           // 读取ADS12991数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+
+          // 关闭采集
+          ADS1299_Stop();
 
           ADS1299_1_CS_High();
 
@@ -325,7 +343,7 @@ int main(void)
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
-              g_ads_data[g_ads_data_count++] = value;
+              g_ads_data[g_ads_data_count++] = value - ads_1_origin[i];
             }
           }
         }
@@ -334,7 +352,9 @@ int main(void)
         if (ads2 != 0)
         {
           // 选择第一个ADS1299芯片
-          ADS1299_2_CS_Low(); 
+          ADS1299_2_CS_Low();
+
+          ADS1299_Start();
 
           // 等待PA0为低电平
           while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
@@ -344,6 +364,9 @@ int main(void)
           // 读取ADS12992数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
 
+          // 关闭采集
+          ADS1299_Stop();
+
           ADS1299_2_CS_High();
 
           for (uint8_t i = 0; i < 8; i++)
@@ -352,7 +375,7 @@ int main(void)
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
-              g_ads_data[g_ads_data_count++] = value;
+              g_ads_data[g_ads_data_count++] = value - ads_2_origin[i];
             }
           }
         }
@@ -389,6 +412,8 @@ int main(void)
           // 选择第一个ADS1299芯片
           ADS1299_1_CS_Low();
 
+          ADS1299_Start();
+
           // 等待PB0为低电平
           while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
           {
@@ -396,6 +421,9 @@ int main(void)
 
           // 读取ADS12991数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+
+          // 关闭采集
+          ADS1299_Stop();
 
           ADS1299_1_CS_High();
 
@@ -405,7 +433,7 @@ int main(void)
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
-              g_ads_data[g_ads_data_count++] = value;
+              g_ads_data[g_ads_data_count++] = value - ads_1_origin[i];
             }
           }
         }
@@ -414,7 +442,9 @@ int main(void)
         if (ads2 != 0)
         {
           // 选择第一个ADS1299芯片
-          ADS1299_2_CS_Low(); 
+          ADS1299_2_CS_Low();
+
+          ADS1299_Start();
 
           // 等待PA0为低电平
           while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
@@ -424,6 +454,9 @@ int main(void)
           // 读取ADS12992数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
 
+          // 关闭采集
+          ADS1299_Stop();
+
           ADS1299_2_CS_High();
 
           for (uint8_t i = 0; i < 8; i++)
@@ -432,7 +465,7 @@ int main(void)
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
-              g_ads_data[g_ads_data_count++] = value;
+              g_ads_data[g_ads_data_count++] = value - ads_2_origin[i];
             }
           }
         }
@@ -445,7 +478,7 @@ int main(void)
     }
 
     // 已经采了3次数据了，该发送了
-    if (g_sample_idx >= 1)
+    if (g_sample_idx >= 3)
     {
       g_sample_idx = 0;
 
@@ -453,7 +486,7 @@ int main(void)
       g_packet[0] = 0x84U;
       g_packet[1] = 0x6FU;
       g_packet[2] = 0x0BU;
-      
+
       // 数据个数
       memcpy(g_packet + 3, &g_ads_data_count, sizeof(g_ads_data_count));
 
@@ -470,9 +503,12 @@ int main(void)
 
       // TODO: 处理数据陀螺仪，电量，打标数据
 
+      memset(g_packet + 13 + 4 * g_ads_data_count, 0, 20);
+
       // 发送数据
-      HAL_UART_Transmit(&huart3, g_packet, 13 + g_ads_data_count * 4, HAL_MAX_DELAY);
-  
+      HAL_UART_Transmit(&huart3, g_packet, 13 + g_ads_data_count * 4 + 20, HAL_MAX_DELAY);
+
+
       // 发送完毕，重置数据个数，从头开始写数据
       g_ads_data_count = 0;
 
@@ -578,9 +614,9 @@ void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* 
 {
   // 定时器时钟为64MHz
   // 定时器频率 = 定时器时钟 / ((PSC + 1) * (ARR + 1))
-  
+
   if (rate == 0) rate = 10;  // 默认10Hz
-  
+
   if (rate <= 100)
   {
     // 低采样率：使用较大的预分频
@@ -646,7 +682,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == USART3)
   {
     // 将数据写入环形缓冲区
-    rb_write(g_usart3_rx_byte);  
+    rb_write(g_usart3_rx_byte);
     HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
   }
 }
@@ -661,7 +697,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM6)
   {
     /* 设置定时器6中断标志位 */
-    tim6_ready = 1;
+    g_tim6_ready = 1;
   }
 }
 
