@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define Power_Pin GPIO_PIN_13
 #define Power_GPIO_Port GPIOC
+#define BatteryLevel_Pin GPIO_PIN_2
+#define BatteryLevel_GPIO_Port GPIOC
 #define ADS1299_2_DRDY_Pin GPIO_PIN_0
 #define ADS1299_2_DRDY_GPIO_Port GPIOA
 #define ADS1299_1_CS_Pin GPIO_PIN_3

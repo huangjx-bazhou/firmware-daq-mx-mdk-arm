@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -31,6 +32,7 @@
 #include "tlc59116.h"
 #include "ringbuffer.h"
 #include "parsecmd.h"
+#include "batterylevel.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -175,6 +177,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   MX_TIM6_Init();
+  MX_ADC3_Init();
   /* USER CODE BEGIN 2 */
 
   DWT_Init();
@@ -313,7 +316,7 @@ int main(void)
         TLC59116_1_SetPwm(ch, g_led_brightness[led]);
 
         // 延时5us
-        delay_us(5);
+        delay_us(25);
 
         // led与ads1建立了通道
         if (ads1 != 0)
@@ -404,7 +407,7 @@ int main(void)
         TLC59116_2_SetPwm(ch, g_led_brightness[8 + led]);
 
         // 延时5us
-        delay_us(5);
+        delay_us(25);
 
         // led与ads1建立了通道
         if (ads1 != 0)
@@ -501,9 +504,12 @@ int main(void)
       // 复制数据
       memcpy(g_packet + 13, &g_ads_data, 4 * g_ads_data_count);
 
-      // TODO: 处理数据陀螺仪，电量，打标数据
+      // TODO: 处理数据陀螺仪
+      memset(g_packet + 13 + 4 * g_ads_data_count, 0, 18);
 
-      memset(g_packet + 13 + 4 * g_ads_data_count, 0, 20);
+      g_packet[13 + 4 * g_ads_data_count + 18] = get_battery_level();
+
+      g_packet[13 + 4 * g_ads_data_count + 19] = 0;
 
       // 发送数据
       HAL_UART_Transmit(&huart3, g_packet, 13 + g_ads_data_count * 4 + 20, HAL_MAX_DELAY);
