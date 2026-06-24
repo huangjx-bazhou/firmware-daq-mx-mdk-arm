@@ -325,7 +325,7 @@ int main(void)
           ADS1299_Start();
 
           // 等待PB0为低电平
-          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
+          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != GPIO_PIN_RESET)
           {
           }
 
@@ -357,7 +357,7 @@ int main(void)
           ADS1299_Start();
 
           // 等待PA0为低电平
-          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) != GPIO_PIN_RESET)
           {
           }
 
@@ -415,7 +415,7 @@ int main(void)
           ADS1299_Start();
 
           // 等待PB0为低电平
-          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_RESET)
+          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != GPIO_PIN_RESET)
           {
           }
 
@@ -447,7 +447,7 @@ int main(void)
           ADS1299_Start();
 
           // 等待PA0为低电平
-          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) != GPIO_PIN_RESET)
           {
           }
 

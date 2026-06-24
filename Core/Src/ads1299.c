@@ -39,6 +39,7 @@
 #define ADS1299_REG_CONFIG1 0x01U
 #define ADS1299_REG_CONFIG2 0x02U
 #define ADS1299_REG_CONFIG3 0x03U
+#define ADS1299_REG_CONFIG4 0x17U
 
 uint8_t spi_tx_buffer[27];
 uint8_t ads_1_origin_rx_buffer[27];
@@ -141,6 +142,7 @@ void ADS1299_1_Init(void)
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF6U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
+  ADS1299_WriteReg(ADS1299_REG_CONFIG4, 0x08U);
 
   for (uint8_t ch = 0; ch < 8; ch++)
   {
@@ -170,6 +172,7 @@ void ADS1299_2_Init(void)
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF6U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
+  ADS1299_WriteReg(ADS1299_REG_CONFIG4, 0x08U);
 
   for (uint8_t ch = 0; ch < 8; ch++)
   {
