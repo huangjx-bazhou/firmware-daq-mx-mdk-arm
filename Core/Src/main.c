@@ -315,8 +315,8 @@ int main(void)
         // 开启LED
         TLC59116_1_SetPwm(ch, g_led_brightness[led]);
 
-        // 延时5us
-        delay_us(25);
+        // 延时10us
+        delay_us(10);
 
         // led与ads1建立了通道
         if (ads1 != 0)
@@ -385,6 +385,8 @@ int main(void)
 
         // 关闭LED
         TLC59116_1_SetPwm(ch, 0);
+
+        delay_us(5);
       }
 
       // 循环开启TLC59116-2的16个通道
@@ -406,8 +408,8 @@ int main(void)
         // 开启LED
         TLC59116_2_SetPwm(ch, g_led_brightness[8 + led]);
 
-        // 延时5us
-        delay_us(25);
+        // 延时10us
+        delay_us(10);
 
         // led与ads1建立了通道
         if (ads1 != 0)
@@ -475,6 +477,8 @@ int main(void)
 
         // 关闭LED
         TLC59116_2_SetPwm(ch, 0);
+
+        delay_us(5);
       }
 
       g_sample_idx++;
