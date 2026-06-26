@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    ads1299.c
@@ -140,7 +140,7 @@ void ADS1299_1_Init(void)
   // 退出连续读模式
   ADS1299_SendCmd(ADS1299_CMD_SDATAC);
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
-  ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF6U);
+  ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0x96U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG4, 0x08U);
 
@@ -170,7 +170,7 @@ void ADS1299_2_Init(void)
   // 退出连续读模式
   ADS1299_SendCmd(ADS1299_CMD_SDATAC);
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
-  ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF6U);
+  ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0x96U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
   ADS1299_WriteReg(ADS1299_REG_CONFIG4, 0x08U);
 
