@@ -54,6 +54,15 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+/*
+ * @brief   延时指定微秒数
+ * @param   us 微秒数
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-29
+ */
+void delay_us(uint32_t us);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

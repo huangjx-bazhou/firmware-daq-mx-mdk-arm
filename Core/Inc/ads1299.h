@@ -41,7 +41,6 @@ extern int32_t ads_2_origin[8];
  * @brief   复位第1个ADS1299芯片
  *
  * 将第1个ADS1299芯片的RESET引脚拉低，等待1ms后再拉高，再等待5ms，完成复位
- * 第1个ADS1299芯片的RESET引脚连接到PB7
  *
  * @author  黄佳兴
  * @version 0.1
@@ -53,7 +52,6 @@ void ADS1299_1_Reset(void);
  * @brief   复位第2个ADS1299芯片
  *
  * 将第2个ADS1299芯片的RESET引脚拉低，等待1ms后再拉高，再等待5ms，完成复位
- * 第2个ADS1299芯片的RESET引脚连接到PA5
  *
  * @author  黄佳兴
  * @version 0.1
@@ -64,8 +62,6 @@ void ADS1299_2_Reset(void);
 /**
  * @brief   将第1个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
  *
- * 第1个ADS1299芯片的CS引脚连接到PA3
- *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-08
@@ -74,8 +70,6 @@ void ADS1299_1_CS_Low(void);
 
 /**
  * @brief   将第1个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
- *
- * 第1个ADS1299芯片的CS引脚连接到PA3
  *
  * @author  黄佳兴
  * @version 0.1
@@ -126,33 +120,23 @@ void ADS1299_Stop(void);
 /**
  * @brief   SPI发送命令字节
  * @param   cmd 命令字节
- * @return  HAL状态
- *         - HAL_OK: 成功
- *         - HAL_ERROR: 发生错误
- *         - HAL_BUSY: 设备忙
- *         - HAL_TIMEOUT: 操作超时
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-12
  */
-HAL_StatusTypeDef ADS1299_SendCmd(uint8_t cmd);
+void ADS1299_SendCmd(uint8_t cmd);
 
 /**
  * @brief   SPI写入单个寄存器
  * @param   reg   寄存器地址 (0x00-0x17)
  * @param   value 写入值
- * @return  HAL状态
- *         - HAL_OK: 成功
- *         - HAL_ERROR: 发生错误
- *         - HAL_BUSY: 设备忙
- *         - HAL_TIMEOUT: 操作超时
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-12
  */
-HAL_StatusTypeDef ADS1299_WriteReg(uint8_t reg, uint8_t value);
+void ADS1299_WriteReg(uint8_t reg, uint8_t value);
 
 /**
  * @brief   SPI读取单个寄存器

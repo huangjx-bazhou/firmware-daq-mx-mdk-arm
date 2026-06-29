@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -103,12 +104,6 @@ static void MPU_Config(void);
 static void DWT_Init(void);
 
 /**
-  * @brief  延时指定微秒数
-  * @param us 微秒数
-  */
-void delay_us(uint32_t us);
-
-/**
   * @brief  检查指定位是否为1
   * @param value 要检查的8位值
   * @param bit 要检查的位（0-7）
@@ -172,10 +167,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
   MX_SPI1_Init();
-  MX_USART1_UART_Init();
   MX_TIM6_Init();
   MX_ADC3_Init();
   /* USER CODE BEGIN 2 */
@@ -327,8 +322,9 @@ int main(void)
           // 开启采集
           ADS1299_Start();
 
-          // 等待PB0为低电平
-          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != GPIO_PIN_RESET)
+
+          // 等待DRDY引脚为低电平
+          while (HAL_GPIO_ReadPin(ADS1299_1_DRDY_GPIO_Port, ADS1299_1_DRDY_Pin) != GPIO_PIN_RESET)
           {
           }
 
@@ -359,8 +355,8 @@ int main(void)
 
           ADS1299_Start();
 
-          // 等待PA0为低电平
-          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) != GPIO_PIN_RESET)
+          // 等待DRDY引脚为低电平
+          while (HAL_GPIO_ReadPin(ADS1299_2_DRDY_GPIO_Port, ADS1299_2_DRDY_Pin) != GPIO_PIN_RESET)
           {
           }
 
@@ -419,8 +415,8 @@ int main(void)
 
           ADS1299_Start();
 
-          // 等待PB0为低电平
-          while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != GPIO_PIN_RESET)
+          // 等待DRDY引脚为低电平
+          while (HAL_GPIO_ReadPin(ADS1299_1_DRDY_GPIO_Port, ADS1299_1_DRDY_Pin) != GPIO_PIN_RESET)
           {
           }
 
@@ -451,8 +447,8 @@ int main(void)
 
           ADS1299_Start();
 
-          // 等待PA0为低电平
-          while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) != GPIO_PIN_RESET)
+          // 等待DRDY引脚为低电平
+          while (HAL_GPIO_ReadPin(ADS1299_2_DRDY_GPIO_Port, ADS1299_2_DRDY_Pin) != GPIO_PIN_RESET)
           {
           }
 
