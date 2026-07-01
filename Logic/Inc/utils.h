@@ -1,9 +1,9 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    adc.h
+  * @file    utils.h
   * @brief   This file contains all the function prototypes for
-  *          the adc.c file
+  *          the utils.c file
   ******************************************************************************
   * @attention
   *
@@ -18,35 +18,36 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __ADC_H__
-#define __ADC_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* USER CODE BEGIN Includes */
+/**
+  * @brief  初始化DWT计时器
 
-/* USER CODE END Includes */
+  * @author  黄佳兴
+  * @version 0.1
+  * @date    2026-06-29
+  */
+void DWT_Init(void);
 
-extern ADC_HandleTypeDef hadc3;
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-void MX_ADC3_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
+/**
+  * @brief  延时指定微秒数
+  * @param us 微秒数
+  *
+  * @author  黄佳兴
+  * @version 0.1
+  * @date    2026-06-29
+  */
+void Delay_US(uint32_t us);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __ADC_H__ */
-
+#endif /* __UTILS_H__ */

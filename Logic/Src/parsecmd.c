@@ -35,7 +35,7 @@ uint8_t  g_led_brightness[LED_COUNT];                     // 光源的亮度
 uint8_t  g_channel_mask[LED_COUNT * RECVIVER_COUNT / 8];  // 16个光源和16个接收器的通道标志
 uint8_t  g_power_flag = CMD_ENABLE_FLAG;                  // 开关机标志
 uint8_t  g_storage_flag = CMD_DISABLE_FLAG;               // 离线存储标志
-uint8_t  g_sample_rate = 10U;                             // 采样率
+uint8_t  g_sample_rate = 50U;                             // 采样率
 uint8_t  g_start_flag = CMD_DISABLE_FLAG;                 // 开始采样标志
 
 uint8_t parse_cmd(uint8_t* cmd)
