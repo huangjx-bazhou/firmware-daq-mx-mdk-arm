@@ -46,6 +46,18 @@ void DWT_Init(void);
   */
 void Delay_US(uint32_t us);
 
+/**
+  * @brief  检查指定位是否为1
+  * @param value 要检查的8位值
+  * @param bit 要检查的位（0-7）
+  * @return uint8_t 位为1则返回1，否则返回0
+  *
+  * @author  黄佳兴
+  * @version 0.1
+  * @date    2026-07-01
+  */
+uint8_t Is_Bit_Set(uint8_t value, uint8_t bit);
+
 #ifdef __cplusplus
 }
 #endif

@@ -106,7 +106,7 @@ void ADS1299_2_CS_High(void);
  * @version 0.1
  * @date    2026-06-22
  */
-void ADS1299_Start(void);
+void ADS1299_Start_ByCmd(void);
 
 /**
  * @brief 停止ADS1299芯片的采集，通过SPI发送命令字节
@@ -114,6 +114,24 @@ void ADS1299_Start(void);
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-22
+ */
+void ADS1299_Stop_ByCmd(void);
+
+/**
+ * @brief 开始ADS1299芯片的采集，通过将START引脚拉高实现
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-01
+ */
+void ADS1299_Start(void);
+
+/**
+ * @brief 停止ADS1299芯片的采集，通过将START引脚拉高实现
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-01
  */
 void ADS1299_Stop(void);
 

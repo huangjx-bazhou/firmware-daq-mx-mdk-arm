@@ -35,6 +35,7 @@
 #include "parsecmd.h"
 #include "ringbuffer.h"
 #include "tlc59116.h"
+#include "utils.h"
 
 /* USER CODE END Includes */
 
@@ -51,7 +52,7 @@
 #define PACKET_SIZE 2048U // 数据包大小, 包括2字节头
 
 // 如果组包速度大于DMA发送速度
-#define PACKET_COUNT 2U // 数据包数量
+#define PACKET_COUNT 8U // 数据包数量
 
 /* USER CODE END PD */
 
@@ -112,14 +113,8 @@ static volatile uint32_t g_cost22_stop_ads1299 = 0U;       // 停止ADS1299耗�
 static volatile uint32_t g_cost22_cs_high = 0U;            // 拉高CS耗时
 static volatile uint32_t g_cost22_process_data = 0U;       // 处理数据耗时
 
-static volatile uint32_t test1 = 0U;
-static volatile uint32_t test2 = 0U;
-static volatile uint32_t test3 = 0U;
-static volatile uint32_t test4 = 0U;
-static volatile uint32_t test5 = 0U;
-static volatile uint32_t test6 = 0U;
-static volatile uint32_t test7 = 0U;
-static volatile uint32_t test8 = 0U;
+// USART3 DMA发送是否过慢
+static volatile uint32_t g_usart3_dma_tx_is_slow = 0U;
 
 // TIM6中断标志(0: 未中断, 1: 中断)
 static volatile uint8_t g_tim6_ready = 0U;
@@ -158,7 +153,7 @@ static uint8_t g_sample_idx = 0U;
 static uint32_t g_packet_num = 0U;
 
 // 数据包,需要发送到上位机
-__attribute__((section(".noncacheable"), aligned(32)))
+//__attribute__((section(".noncacheable"), aligned(32)))
 static uint8_t g_packet[PACKET_COUNT][PACKET_SIZE];
 
 // 新数据包索引
@@ -167,7 +162,7 @@ static int8_t g_new_packet_index = -1;
 // 正在发送数据包索引
 static int8_t g_tx_packet_index = -1;
 
-static uint8_t g_tx_ads_data_count = 0U;
+static uint16_t g_tx_ads_data_count = 0U;
 
 /* USER CODE END PV */
 
@@ -175,19 +170,6 @@ static uint8_t g_tx_ads_data_count = 0U;
 void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
-
-/**
-  * @brief  初始化DWT计时器
-  */
-static void DWT_Init(void);
-
-/**
-  * @brief  检查指定位是否为1
-  * @param value 要检查的8位值
-  * @param bit 要检查的位（0-7）
-  * @return uint8_t 位为1则返回1，否则返回0
-  */
-uint8_t is_bit_set(uint8_t value, uint8_t bit);
 
 /**
   * @brief  根据采样率配置定时器6
@@ -306,7 +288,6 @@ int main(void)
           if (cmd_len >= CMD_PACKET_SIZE)
           {
             parse_cmd(cmd_buf);  // 传递完整数据包（包括头）
-            HAL_UART_Transmit(&huart3, cmd_buf, cmd_len, HAL_MAX_DELAY);
             cmd_state = 0;  // 解析完成，重新等待头
           }
           break;
@@ -404,7 +385,7 @@ int main(void)
         TLC59116_1_SetPwm(ch, g_led_brightness[led]);
 
         // TODO: 待确认延时10us
-        delay_us(10);
+        Delay_US(10);
    
         uint32_t ads1_channel_start = DWT->CYCCNT;
 
@@ -419,7 +400,7 @@ int main(void)
           uint32_t ads1299_1_start_start = DWT->CYCCNT;
 
           // 开启采集
-          ADS1299_Start();
+          ADS1299_Start_ByCmd();
 
           uint32_t ads1299_1_wait_drdy_start = DWT->CYCCNT;
 
@@ -436,7 +417,7 @@ int main(void)
           uint32_t ads1299_1_stop_start = DWT->CYCCNT;
 
           // 关闭采集
-          ADS1299_Stop();
+          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_1_cs_high_start = DWT->CYCCNT;
 
@@ -446,7 +427,7 @@ int main(void)
 
           for (uint8_t i = 0; i < 8; i++)
           {
-            uint8_t set = is_bit_set(ads1, i);
+            uint8_t set = Is_Bit_Set(ads1, i);
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
@@ -479,7 +460,7 @@ int main(void)
           uint32_t ads1299_2_start_start = DWT->CYCCNT;
 
           // 开启采集
-          ADS1299_Start();
+          ADS1299_Start_ByCmd();
           
           uint32_t ads1299_2_wait_drdy_start = DWT->CYCCNT;
 
@@ -496,7 +477,7 @@ int main(void)
           uint32_t ads1299_2_stop_start = DWT->CYCCNT;
 
           // 关闭采集
-          ADS1299_Stop();
+          ADS1299_Stop_ByCmd();
           
           uint32_t ads1299_2_cs_high_start = DWT->CYCCNT;
 
@@ -506,7 +487,7 @@ int main(void)
 
           for (uint8_t i = 0; i < 8; i++)
           {
-            uint8_t set = is_bit_set(ads2, i);
+            uint8_t set = Is_Bit_Set(ads2, i);
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
@@ -562,7 +543,7 @@ int main(void)
         TLC59116_2_SetPwm(ch, g_led_brightness[8 + led]);
 
         // TODO: 待确认延时10us
-        delay_us(10);
+        Delay_US(10);
 
         uint32_t ads1_channel_start = DWT->CYCCNT;
 
@@ -577,7 +558,7 @@ int main(void)
           uint32_t ads1299_1_start_start = DWT->CYCCNT;
 
           // 开启采集
-          ADS1299_Start();
+          ADS1299_Start_ByCmd();
 
           uint32_t ads1299_1_wait_drdy_start = DWT->CYCCNT;
 
@@ -594,7 +575,7 @@ int main(void)
           uint32_t ads1299_1_stop_start = DWT->CYCCNT;
 
           // 关闭采集
-          ADS1299_Stop();
+          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_1_cs_high_start = DWT->CYCCNT;
 
@@ -604,7 +585,7 @@ int main(void)
 
           for (uint8_t i = 0; i < 8; i++)
           {
-            uint8_t set = is_bit_set(ads1, i);
+            uint8_t set = Is_Bit_Set(ads1, i);
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
@@ -637,7 +618,7 @@ int main(void)
           uint32_t ads1299_2_start_start = DWT->CYCCNT;
 
           // 开启采集
-          ADS1299_Start();
+          ADS1299_Start_ByCmd();
 
           uint32_t ads1299_2_wait_drdy_start = DWT->CYCCNT;
 
@@ -654,7 +635,7 @@ int main(void)
           uint32_t ads1299_2_stop_start = DWT->CYCCNT;
 
           // 关闭采集
-          ADS1299_Stop();
+          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_2_cs_high_start = DWT->CYCCNT;
 
@@ -664,7 +645,7 @@ int main(void)
 
           for (uint8_t i = 0; i < 8; i++)
           {
-            uint8_t set = is_bit_set(ads2, i);
+            uint8_t set = Is_Bit_Set(ads2, i);
             if (1 == set)
             {
               int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
@@ -707,8 +688,17 @@ int main(void)
       g_sample_idx = 0;
 
       // 新数据包索引
-      g_new_packet_index = (g_new_packet_index + 1) % PACKET_COUNT;
-      
+      int8_t new_packet_index = (g_new_packet_index + 1) % PACKET_COUNT;;
+      if (new_packet_index == g_tx_packet_index)
+      {
+        g_usart3_dma_tx_is_slow = 1;
+      }
+      else
+      {
+        g_usart3_dma_tx_is_slow = 0;
+        g_new_packet_index = new_packet_index;
+      }
+
       // 数据头和型号
       g_packet[g_new_packet_index][0] = 0x84U;
       g_packet[g_new_packet_index][1] = 0x6FU;
@@ -735,8 +725,6 @@ int main(void)
 
       g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 19] = 0;
 
-      // 发送数据
-      //HAL_UART_Transmit(&huart3, g_packet, 13 + g_ads_data_count * 4 + 20, HAL_MAX_DELAY);
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
@@ -812,27 +800,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void DWT_Init(void)
-{
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
-    DWT->CYCCNT = 0;
-}
-
-void delay_us(uint32_t us)
-{
-    uint32_t start = DWT->CYCCNT;
-    uint32_t ticks = us * (SystemCoreClock / 1000000U);
-
-    while ((int32_t)(DWT->CYCCNT - start) < (int32_t)ticks);
-}
-
-uint8_t is_bit_set(uint8_t value, uint8_t bit)
-{
-    if (bit > 7) return 0;  // 8位范围检查
-    return (value & (1 << bit)) != 0;
-}
 
 /**
   * @brief   配置定时器6的采样率

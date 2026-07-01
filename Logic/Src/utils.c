@@ -41,3 +41,10 @@ void Delay_US(uint32_t us)
     /// NOTE: 使用有符号特性防止计数溢出，如果回绕了两圈怎么办
     while ((int32_t)(DWT->CYCCNT - start) < (int32_t)ticks);
 }
+
+uint8_t Is_Bit_Set(uint8_t value, uint8_t bit)
+{
+    // 7 6 5 4 3 2 1 0  位从高到低编号
+    if (bit > 7) return 0;  // 8位范围检查
+    return (value & (1 << bit)) != 0;
+}

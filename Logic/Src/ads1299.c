@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "ads1299.h"
+#include "utils.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -46,8 +47,6 @@ uint8_t ads_1_origin_rx_buffer[27];
 uint8_t ads_2_origin_rx_buffer[27];
 int32_t ads_1_origin[8];
 int32_t ads_2_origin[8];
-
-uint8_t regtest[3];
 
 int32_t ads1299_24_to_32(const uint8_t raw[3])
 {
@@ -96,18 +95,24 @@ void ADS1299_2_CS_High(void)
   HAL_GPIO_WritePin(ADS1299_2_CS_GPIO_Port, ADS1299_2_CS_Pin, GPIO_PIN_SET);
 }
 
-void ADS1299_Start(void)
+void ADS1299_Start_ByCmd(void)
 {
   ADS1299_SendCmd(ADS1299_CMD_START);
-  //HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_RESET);
-  //delay_us(1);
-  //HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_SET);
+}
+
+void ADS1299_Stop_ByCmd(void)
+{
+  ADS1299_SendCmd(ADS1299_CMD_STOP);
+}
+
+void ADS1299_Start(void)
+{
+  HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_SET);
 }
 
 void ADS1299_Stop(void)
 {
-  ADS1299_SendCmd(ADS1299_CMD_STOP);
-  //HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_RESET);
 }
 
 void ADS1299_SendCmd(uint8_t cmd)
@@ -116,7 +121,7 @@ void ADS1299_SendCmd(uint8_t cmd)
   HAL_SPI_Transmit(&hspi1, &cmd, 1U, HAL_MAX_DELAY);
 
   /// TODO: 延时时间待确认
-  delay_us(2);  // 等待SDECODE时间
+  Delay_US(2);  // 等待SDECODE时间
 }
 
 void ADS1299_WriteReg(uint8_t reg, uint8_t value)
@@ -136,7 +141,7 @@ uint8_t ADS1299_ReadReg(uint8_t reg)
 {
   uint8_t tx[3] = {0x20 | (reg & 0x1F), 0x00, 0x00};
   uint8_t rx[3];
-  HAL_SPI_TransmitReceive(&hspi1, tx, regtest, 3, HAL_MAX_DELAY);
+  HAL_SPI_TransmitReceive(&hspi1, tx, rx, 3, HAL_MAX_DELAY);
   return rx[2];
 }
 
@@ -159,8 +164,6 @@ void ADS1299_1_Init(void)
 
   // 配置寄存器-16KSPS
   ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF0U);
-
-  //ADS1299_ReadReg(ADS1299_REG_CONFIG1);
 
   // 配置寄存器
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
