@@ -242,6 +242,7 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM6_Init();
   MX_ADC3_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
 #ifdef DEBUG_MODE
@@ -250,11 +251,21 @@ int main(void)
   g_test_packet[2] = 0x0B;
 #endif
 
+  // 初始化数据包，提前设置头字节为846F0B
+  for (uint8_t i = 0; i < PACKET_COUNT; ++i)
+  {
+    g_packet[i][0] = 0x84;
+    g_packet[i][1] = 0x6F;
+    g_packet[i][2] = 0x0B;
+  }
+
   DWT_Init();
 
   HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
 
   HAL_TIM_Base_Start_IT(&htim6);
+
+  HAL_TIM_Base_Start_IT(&htim7);
 
   // 初始化所有(2个)TLC59116为PWM模式，设置所有通道的PWM值为0
   TLC59116_Init();
@@ -696,7 +707,7 @@ int main(void)
       g_sample_idx++;
     }
 
-    // 已经采了3次数据了，该发送了
+    // 采样次数大于指定次数就发送
     if (g_sample_idx >= 1)
     {
       g_sample_idx = 0;
@@ -713,21 +724,14 @@ int main(void)
         g_new_packet_index = new_packet_index;
       }
 
-      // 数据头和型号
-      g_packet[g_new_packet_index][0] = 0x84U;
-      g_packet[g_new_packet_index][1] = 0x6FU;
-      g_packet[g_new_packet_index][2] = 0x0BU;
-
       // 数据个数
       memcpy(g_packet[g_new_packet_index] + 3, &g_ads_data_count, sizeof(g_ads_data_count));
 
       // 数据包序号
       memcpy(g_packet[g_new_packet_index] + 5, &g_packet_num, sizeof(g_packet_num));
 
-      g_packet[g_new_packet_index][9] = 0x00U;
-      g_packet[g_new_packet_index][10] = 0x00U;
-      g_packet[g_new_packet_index][11] = 0x00U;
-      g_packet[g_new_packet_index][12] = 0x00U;
+      // 时间戳
+      memcpy(g_packet[g_new_packet_index] + 9, (const void *)&g_timestamp, sizeof(g_timestamp));
 
       // 复制数据
       memcpy(g_packet[g_new_packet_index] + 13, &g_ads_data, 4 * g_ads_data_count);
@@ -918,6 +922,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     /* 设置定时器6中断标志位 */
     g_tim6_ready = 1;
+  }
+  else if (htim->Instance == TIM7)
+  {
+    g_timestamp++;
   }
 }
 

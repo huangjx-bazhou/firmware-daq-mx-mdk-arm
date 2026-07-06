@@ -30,7 +30,7 @@ uint8_t g_sample_rate_changed = 0U;
 // 开始采样标志是否改变标志(0: 未改变, 1: 已改变)
 uint8_t g_start_flag_changed = 0U;
 
-uint32_t g_timestamp;                                     // 时间戳
+volatile uint32_t g_timestamp;                            // 时间戳
 uint8_t  g_led_brightness[LED_COUNT];                     // 光源的亮度
 uint8_t  g_channel_mask[LED_COUNT * RECVIVER_COUNT / 8];  // 16个光源和16个接收器的通道标志
 uint8_t  g_power_flag = CMD_ENABLE_FLAG;                  // 开关机标志
