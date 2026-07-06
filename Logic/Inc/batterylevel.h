@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    batterylevel.h
@@ -37,30 +37,32 @@ extern float g_battery_voltage;
 extern uint8_t g_battery_level;
 
 /*
- * @brief 获取adc3的采样值，结果保存到g_adc3_sample
+ * @brief 获取adc3的采样值，结果保存到g_adc3_sample并返回
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-24
- */ 
+ */
 uint32_t get_adc3_sample(void);
 
 /*
- * @brief 获取电池电压，结果保存到g_battery_voltage
+ * @brief 获取电池电压，结果保存到g_battery_voltage并返回
+ *        内部调用get_adc3_sample获取adc3的采样值，再根据采样值计算电压值
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-24
- */ 
+ */
 float get_battery_voltage(void);
 
 /*
- * @brief 获取电池电量，结果保存到g_battery_level
+ * @brief 获取电池电量，结果保存到g_battery_level并返回
+ *        内部调用get_battery_voltage获取电池电压，再根据电压值计算电量值
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-24
- */ 
+ */
 uint8_t get_battery_level(void);
 
 #ifdef __cplusplus
@@ -68,4 +70,3 @@ uint8_t get_battery_level(void);
 #endif
 
 #endif /* __BATTERYLEVEL_H__ */
-

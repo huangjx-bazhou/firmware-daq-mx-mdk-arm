@@ -32,7 +32,6 @@ uint32_t get_adc3_sample(void)
   HAL_ADC_PollForConversion(&hadc3, 100U);
   g_adc3_sample = HAL_ADC_GetValue(&hadc3);
   HAL_ADC_Stop(&hadc3);
-
   return g_adc3_sample;
 }
 
@@ -40,8 +39,7 @@ float get_battery_voltage(void)
 {
   get_adc3_sample();
   // TODO: 从ADC3配置中获取分辨率
-  g_battery_voltage = (float)g_adc3_sample / 65535.0f * 3.27f;                                                                                                                                                                                                                                                                                                                                                                                                                                       
-
+  g_battery_voltage = (float)g_adc3_sample / 65535.0f * 3.27f;
   return g_battery_voltage;
 }
 
@@ -50,23 +48,20 @@ uint8_t get_battery_level(void)
   get_battery_voltage();
   // 标称 7.4V，满电 8.4V，放尽 ≈ 6.6V
   float volt = g_battery_voltage * 2.8f / 2.0f;
-
+  /// TODO: 根据电池官方手册，计算电量值，没有找到相关资料
   if (volt >= 4.20f) g_battery_level = 100;
-  if (volt >= 4.15f) g_battery_level = 95;
-  if (volt >= 4.10f) g_battery_level = 90;
-  if (volt >= 4.05f) g_battery_level = 85;
-  if (volt >= 4.00f) g_battery_level = 80;
-  if (volt >= 3.95f) g_battery_level = 75;
-  if (volt >= 3.90f) g_battery_level = 50;
-	
-  if (volt >= 3.85f) g_battery_level = 40;
-  if (volt >= 3.80f) g_battery_level = 30;
-  if (volt >= 3.75f) g_battery_level = 20;
-  if (volt >= 3.70f) g_battery_level = 15;
-  if (volt >= 3.65f) g_battery_level = 10;
-  if (volt >= 3.55f) g_battery_level = 5;
-  if (volt >= 3.0f) g_battery_level = 0;
-
+  else if (volt >= 4.15f) g_battery_level = 95;
+  else if (volt >= 4.10f) g_battery_level = 90;
+  else if (volt >= 4.05f) g_battery_level = 85;
+  else if (volt >= 4.00f) g_battery_level = 80;
+  else if (volt >= 3.95f) g_battery_level = 75;
+  else if (volt >= 3.90f) g_battery_level = 50;
+  else if (volt >= 3.85f) g_battery_level = 40;
+  else if (volt >= 3.80f) g_battery_level = 30;
+  else if (volt >= 3.75f) g_battery_level = 20;
+  else if (volt >= 3.70f) g_battery_level = 15;
+  else if (volt >= 3.65f) g_battery_level = 10;
+  else if (volt >= 3.55f) g_battery_level = 5;
+  else g_battery_level = 0;
   return g_battery_level;
 }
-
