@@ -47,6 +47,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+// 调试模式, 开启后会添加测试变量
+#define DEBUG_MODE 
+
 #define CALIBRATE_FREQUENCY 15000U // 校准频率每15000次校准一次
 
 #define PACKET_SIZE 2048U // 数据包大小, 包括2字节头
@@ -66,6 +69,9 @@
 /* USER CODE BEGIN PV */
 
 /* 测试变量，用来测试耗时 ---------------------------------------------------------*/
+
+#ifdef DEBUG_MODE
+
 static volatile uint32_t g_dwt_now = 0U;                  // 当前dwt值
 
 // TLC59116-1 
@@ -116,6 +122,11 @@ static volatile uint32_t g_cost22_process_data = 0U;       // 处理数据耗时
 // USART3 DMA发送是否过慢
 static volatile uint32_t g_usart3_dma_tx_is_slow = 0U;
 
+// 测试数据包，固定值前三字节为846F0B，其余为0
+static uint8_t g_test_packet[512];
+
+#endif
+
 // TIM6中断标志(0: 未中断, 1: 中断)
 static volatile uint8_t g_tim6_ready = 0U;
 
@@ -131,9 +142,6 @@ static uint8_t g_usart3_rx_byte = 0U;
 // SPI ADS1299
 uint8_t spi_ads_1_rx_buffer[27];  // 第一个ADS1299接收缓冲区
 uint8_t spi_ads_2_rx_buffer[27];  // 第二个ADS1299接收缓冲区
-
-uint8_t spi_ads_1_origin_rx_buffer[27];
-uint8_t spi_ads_2_origin_rx_buffer[27];
 
 // 逐字节读取并验证头字节
 static uint8_t cmd_state = 0;  // 0:等待第一个头字节, 1:等待第二个头字节, 2:读取数据
@@ -153,7 +161,6 @@ static uint8_t g_sample_idx = 0U;
 static uint32_t g_packet_num = 0U;
 
 // 数据包,需要发送到上位机
-//__attribute__((section(".noncacheable"), aligned(32)))
 static uint8_t g_packet[PACKET_COUNT][PACKET_SIZE];
 
 // 新数据包索引
@@ -163,6 +170,8 @@ static int8_t g_new_packet_index = -1;
 static int8_t g_tx_packet_index = -1;
 
 static uint16_t g_tx_ads_data_count = 0U;
+
+static volatile uint8_t g_tx_head = 0U;
 
 /* USER CODE END PV */
 
@@ -234,6 +243,12 @@ int main(void)
   MX_TIM6_Init();
   MX_ADC3_Init();
   /* USER CODE BEGIN 2 */
+
+#ifdef DEBUG_MODE
+  g_test_packet[0] = 0x84;
+  g_test_packet[1] = 0x6F;
+  g_test_packet[2] = 0x0B;
+#endif
 
   DWT_Init();
 
@@ -346,7 +361,6 @@ int main(void)
       // 下一个要发送的数据包索引
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
-      // 发送下一个数据包
       HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20);
     }
 
@@ -683,7 +697,7 @@ int main(void)
     }
 
     // 已经采了3次数据了，该发送了
-    if (g_sample_idx >= 3)
+    if (g_sample_idx >= 1)
     {
       g_sample_idx = 0;
 
@@ -724,7 +738,6 @@ int main(void)
       g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 18] = get_battery_level();
 
       g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 19] = 0;
-
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
