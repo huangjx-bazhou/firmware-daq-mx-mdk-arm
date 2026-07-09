@@ -1,9 +1,9 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    usart.h
+  * @file    gy95t.h
   * @brief   This file contains all the function prototypes for
-  *          the usart.c file
+  *          the gy95t.c file
   ******************************************************************************
   * @attention
   *
@@ -18,38 +18,29 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USART_H__
-#define __USART_H__
+#ifndef __GY95T_H__
+#define __GY95T_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "usart.h"
 
-/* USER CODE BEGIN Includes */
+// adc3的采样值
+extern uint32_t g_adc3_sample;
 
-/* USER CODE END Includes */
-
-extern UART_HandleTypeDef huart2;
-
-extern UART_HandleTypeDef huart3;
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-void MX_USART2_UART_Init(void);
-void MX_USART3_UART_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
+/*
+ * @brief 初始化GY95T
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-06
+ */
+void GY95T_Init(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __USART_H__ */
-
+#endif /* __GY95T_H__ */

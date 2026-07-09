@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    batterylevel.c
@@ -46,22 +46,18 @@ float get_battery_voltage(void)
 uint8_t get_battery_level(void)
 {
   get_battery_voltage();
-  // 标称 7.4V，满电 8.4V，放尽 ≈ 6.6V
+
   float volt = g_battery_voltage * 2.8f / 2.0f;
-  /// TODO: 根据电池官方手册，计算电量值，没有找到相关资料
-  if (volt >= 4.20f) g_battery_level = 100;
-  else if (volt >= 4.15f) g_battery_level = 95;
-  else if (volt >= 4.10f) g_battery_level = 90;
-  else if (volt >= 4.05f) g_battery_level = 85;
-  else if (volt >= 4.00f) g_battery_level = 80;
-  else if (volt >= 3.95f) g_battery_level = 75;
-  else if (volt >= 3.90f) g_battery_level = 50;
-  else if (volt >= 3.85f) g_battery_level = 40;
-  else if (volt >= 3.80f) g_battery_level = 30;
-  else if (volt >= 3.75f) g_battery_level = 20;
-  else if (volt >= 3.70f) g_battery_level = 15;
-  else if (volt >= 3.65f) g_battery_level = 10;
-  else if (volt >= 3.55f) g_battery_level = 5;
-  else g_battery_level = 0;
+
+  if (volt > 4.20f) volt = 4.20f;
+  else if (volt < 3.30f) volt = 3.30f;
+
+  /// TODO: 根据电池官方手册，计算电量值，没有找到相关资料  
+  if (volt > 4.00f) g_battery_level = 100.0f * volt - 320.0f;
+  else if (volt > 3.75f) g_battery_level = 200.0f * volt - 720.0f;
+  else if (volt > 3.60f) g_battery_level = 133.3333f * volt - 470.0f;
+  else if (volt > 3.40f) g_battery_level = 25.0f * volt - 80.0f;
+  else g_battery_level = 50.0f * volt - 165.0f;
+
   return g_battery_level;
 }
