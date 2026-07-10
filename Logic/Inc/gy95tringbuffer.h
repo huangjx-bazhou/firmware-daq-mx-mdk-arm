@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    ringbuffer.h
+  * @file    gy95tringbuffer.h
   * @brief   This file contains all the function prototypes for
-  *          the ringbuffer.c file
+  *          the gy95tringbuffer.c file
   ******************************************************************************
   * @attention
   *
@@ -18,8 +18,8 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __RINGBUFFER_H__
-#define __RINGBUFFER_H__
+#ifndef __GY95TRINGBUFFER_H__
+#define __GY95TRINGBUFFER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +37,7 @@ extern "C" {
  * @version 0.1
  * @date    2026-06-17
 */
-void rb_write(uint8_t data);
+void gy95t_rb_write(uint8_t data);
 
 /*
  * @brief 从环形缓冲区读取数据
@@ -47,21 +47,24 @@ void rb_write(uint8_t data);
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-17
-*/
-uint8_t rb_read(uint8_t *data);
-
-/*
- * @brief 获取环形缓冲区中可用的字节数
- * @return uint8_t 可用的字节数
+ * @return uint8_t 读取到的数据长度
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-17
 */
-uint8_t rb_available(void);
+uint8_t gy95t_rb_read(uint8_t *data);
+
+/*
+ * @brief 获取环形缓冲区中可用的字节数
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-17
+*/
+uint8_t gy95t_rb_available(void);
 
 #ifdef __cplusplus
 }
 #endif
-#endif /*__RINGBUFFER_H__ */
+#endif /*__GY95TRINGBUFFER_H__ */
 

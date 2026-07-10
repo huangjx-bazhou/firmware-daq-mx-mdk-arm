@@ -27,17 +27,26 @@ extern "C" {
 
 #include "usart.h"
 
-// adc3的采样值
-extern uint32_t g_adc3_sample;
+// usart2接收缓存
+extern volatile uint8_t g_usart2_rx_byte;
 
 /*
- * @brief 初始化GY95T
+ * @brief GY95T开始连续输出
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-06
  */
-void GY95T_Init(void);
+void GY95T_Start(void);
+
+/*
+ * @brief GY95T停止连续输出
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-09
+ */
+void GY95T_Stop(void);
 
 #ifdef __cplusplus
 }

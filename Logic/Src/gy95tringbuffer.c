@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    ringbuffer.c
-  * @brief   This file provides code for the ringbuffer.
+  * @file    gy95tringbuffer.c
+  * @brief   This file provides code for the gy95tringbuffer.
   ******************************************************************************
   * @attention
   *
@@ -18,43 +18,42 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "ringbuffer.h"
+#include "gy95tringbuffer.h"
 
 // 定义环形缓冲区大小
-#define RB_SIZE 64U
+#define GY95T_RB_SIZE 64U
 
 // 定义环形缓冲区
-static uint8_t rb_buf[RB_SIZE];
+volatile uint8_t gy95t_rb_buf[GY95T_RB_SIZE];
 
 // 定义环形缓冲区头指针
-static volatile uint8_t rb_head = 0U;
+volatile uint8_t gy95t_rb_head = 0U;
 
 // 定义环形缓冲区尾指针
-static volatile uint8_t rb_tail = 0U;
+volatile uint8_t gy95t_rb_tail = 0U;
 
-void rb_write(uint8_t data)
+void gy95t_rb_write(uint8_t data)
 {
-  uint8_t next = (rb_head + 1U) % RB_SIZE;
-  if (next != rb_tail)
+  uint8_t next = (gy95t_rb_head + 1U) % GY95T_RB_SIZE;
+  if (next != gy95t_rb_tail)
   {
-    rb_buf[rb_head] = data;
-    rb_head = next;
+    gy95t_rb_buf[gy95t_rb_head] = data;
+    gy95t_rb_head = next;
   }
 }
 
-uint8_t rb_read(uint8_t *data)
+uint8_t gy95t_rb_read(uint8_t *data)
 {
-  if (rb_head == rb_tail)
+  if (gy95t_rb_head == gy95t_rb_tail)
   {
     return 0U;
   }
-  *data = rb_buf[rb_tail];
-  rb_tail = (rb_tail + 1U) % RB_SIZE;
+  *data = gy95t_rb_buf[gy95t_rb_tail];
+  gy95t_rb_tail = (gy95t_rb_tail + 1U) % GY95T_RB_SIZE;
   return 1U;
 }
 
-uint8_t rb_available(void)
+uint8_t gy95t_rb_available(void)
 {
-  return (RB_SIZE + rb_head - rb_tail) % RB_SIZE;
+  return (GY95T_RB_SIZE + gy95t_rb_head - gy95t_rb_tail) % GY95T_RB_SIZE;
 }
-

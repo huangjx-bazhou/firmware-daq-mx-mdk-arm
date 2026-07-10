@@ -33,7 +33,7 @@
 #include "ads1299.h"
 #include "batterylevel.h"
 #include "parsecmd.h"
-#include "ringbuffer.h"
+#include "wifiringbuffer.h"
 #include "tlc59116.h"
 #include "utils.h"
 
@@ -74,9 +74,16 @@
 
 static volatile uint32_t g_dwt_now = 0U;                  // 当前dwt值
 
+
+uint32_t g_tim6_cost = 0U;
+
 // TLC59116-1 
 static volatile uint32_t g_cost1_turn_on_led = 0U;        // 开LED耗时
 static volatile uint32_t g_cost1_turn_off_led = 0U;       // 关闭LED耗时
+
+// TLC59116-2
+static volatile uint32_t g_cost2_turn_on_led = 0U;        // 开LED耗时
+static volatile uint32_t g_cost2_turn_off_led = 0U;       // 关闭LED耗时
 
 // TLC59116-1 -> ADS1299-1
 static volatile uint32_t g_cost11_cs_low = 0U;             // 拉低CS耗时
@@ -263,12 +270,15 @@ int main(void)
     g_packet[i][1] = 0x6F;
     g_packet[i][2] = 0x0B;
   }
+	
+	memset(g_led_brightness, 0xFF, sizeof(g_led_brightness));
 
   DWT_Init();
 
-  // 
-  HAL_UART_Receive_IT(&huart2, &g_usart3_rx_byte, 1U);
-
+  // 初始化USART2接收中断
+  //HAL_UART_Receive_IT(&huart2, &g_usart2_rx_byte, 1U);
+  
+  // 初始化USART3接收中断
   HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
 
   HAL_TIM_Base_Start_IT(&htim6);
@@ -291,10 +301,10 @@ int main(void)
   while (1)
   {
     // 1.处理WIFI串口命令
-    if (rb_available() > 0)
+    if (wifi_rb_available() > 0)
     {
       uint8_t byte;
-      rb_read(&byte);
+      wifi_rb_read(&byte);
 
       switch (cmd_state)
       {
@@ -390,6 +400,8 @@ int main(void)
     {
       g_tim6_ready = 0;
       g_tim6_ready_count++;
+
+      uint32_t tim6_start = DWT->CYCCNT;
 
       if (g_tim6_ready_count >= CALIBRATE_FREQUENCY)
       {
@@ -708,13 +720,15 @@ int main(void)
         uint32_t turn_off_led_end = DWT->CYCCNT;
 
         // 测试耗时
-        g_cost1_turn_on_led = ads1_channel_start - turn_on_led_start;
-        g_cost11 = ads2_channel_start - ads1_channel_start;
-        g_cost12 = turn_off_led_start - ads2_channel_start;
-        g_cost1_turn_off_led = turn_off_led_end - turn_off_led_start;
+        g_cost2_turn_on_led = ads1_channel_start - turn_on_led_start;
+        //g_cost21 = ads2_channel_start - ads1_channel_start;
+        //g_cost22 = turn_off_led_start - ads2_channel_start;
+        g_cost2_turn_off_led = turn_off_led_end - turn_off_led_start;
       }
 
       g_sample_idx++;
+
+      g_tim6_cost = DWT->CYCCNT - tim6_start;
     }
 
     // 采样次数大于指定次数就发送
@@ -921,16 +935,30 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 }
 
 /**
-  * @brief   处理USART3的接收中断，USART3用于与WIFI模块通信
+  * @brief   USART的半满完成回调
+  * @param   huart  UART句柄
+  */
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (USART2 == huart->Instance)
+  {
+  }
+}
+
+/**
+  * @brief   USART的全满完成回调
   * @param   huart  UART句柄
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  // 处理USART3的接收中断，USART3用于与WIFI模块通信
-  if (huart->Instance == USART3)
+  if (huart->Instance == USART2)
   {
+  }
+  else if (huart->Instance == USART3)
+  {
+    // 处理USART3的接收中断，USART3用于与WIFI模块通信，接收上位机命令
     // 将数据写入环形缓冲区
-    rb_write(g_usart3_rx_byte);
+    wifi_rb_write(g_usart3_rx_byte);
     HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
   }
 }
