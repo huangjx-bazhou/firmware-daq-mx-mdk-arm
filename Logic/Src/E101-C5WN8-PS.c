@@ -100,18 +100,18 @@ void WIFI_AssembleCommand(uint8_t byte)
 
 void WIFI_ParseCommand(uint8_t* cmd)
 {
-  // 不处理第3字节，因为它是0x0B，不感兴趣
+  /* 不处理第3字节，因为它是0x0B，不感兴趣 */
 
-  // TODO: 验证时间戳是否解析正确
+  /* TODO: 验证时间戳是否解析正确 */
   g_timestamp = (uint32_t)cmd[3];
 
-  // LED亮度解析
+  /* LED亮度解析 */
   for (uint8_t i = 0; i < LED_COUNT; i++)
   {
     g_led_brightness[i] = cmd[7 + i];
   }
 
-  // 通道掩码复制
+  /* 通道掩码复制 */
   memcpy(g_channel_mask, cmd + 23, LED_COUNT * RECVIVER_COUNT / 8);
 
   /* 开关机标志解析 */

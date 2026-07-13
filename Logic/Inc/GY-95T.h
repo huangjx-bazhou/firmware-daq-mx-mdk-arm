@@ -68,13 +68,13 @@ void GY95T_Stop(void);
 /**
  * @brief GY95T处理一字节数据
  *
- * @param[in] data 要处理的字节数据
+ * @param[in] byte 要处理的字节数据
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-10
  */
-void GY95T_ProcessByte(uint8_t data);
+void GY95T_ProcessByte(uint8_t byte);
 
 #ifdef __cplusplus
 }

@@ -25,9 +25,7 @@
 extern "C" {
 #endif
 
-#include "main.h"
-#include <stdbool.h>
-#include "ringbuffer.h"
+#include "RingBuffer.h"
 
 /** LED数量，两个TLC59116，每个连接8个LED */
 #define LED_COUNT 16U
@@ -76,38 +74,39 @@ extern bool g_start_flag_changed;
 /**  开始采样标志 */
 extern bool g_start_flag;
 
-/*
+/**
  * @brief 初始化WIFI模块
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-13
-*/
+ */
 void WIFI_Init(void);
 
-/*
+/**
  * @brief 组装命令
  *
- * @param uint8_t byte 要处理的字节
+ * @param[in] uint8_t byte 要处理的字节
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-10
-*/
+ */
 void WIFI_AssembleCommand(uint8_t byte);
 
-/*
+/**
  * @brief 解析命令
  *
- * @param uint8_t* cmd 要解析的命令指针
+ * @param[in] cmd uint8_t* cmd 要解析的命令指针
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-17
-*/
+ */
 void WIFI_ParseCommand(uint8_t* cmd);
 
 #ifdef __cplusplus
 }
 #endif
 #endif /*__E101_C5WN8_PS_H__ */
+
