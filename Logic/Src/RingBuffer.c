@@ -1,8 +1,8 @@
 ﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    ringbuffer.c
-  * @brief   This file provides code for the ringbuffer.
+  * @file    RingBuffer.c
+  * @brief   This file provides code for the RingBuffer.
   ******************************************************************************
   * @attention
   *
@@ -17,7 +17,7 @@
   */
 /* USER CODE END Header */
 
-#include "ringbuffer.h"
+#include "RingBuffer.h"
 #include <string.h>
 
 void RB_Init(RingBuffer *rb)
@@ -31,7 +31,6 @@ uint32_t RB_Write(RingBuffer *rb, const uint8_t *data, uint32_t len)
   uint32_t free = RB_SIZE - RB_Available(rb) - 1U;
   uint32_t count = (free < len) ? free : len;
 
-  /* 第一段: head到数组末尾 */
   uint32_t first = RB_SIZE - rb->head;
   if (first > count)
   {
@@ -39,7 +38,6 @@ uint32_t RB_Write(RingBuffer *rb, const uint8_t *data, uint32_t len)
   }
   memcpy(&rb->buf[rb->head], data, first);
 
-  /* 第二段: 回绕 */
   if (first < count)
   {
     memcpy(rb->buf, &data[first], count - first);
@@ -54,7 +52,6 @@ uint32_t RB_Read(RingBuffer *rb, uint8_t *data, uint32_t len)
   uint32_t available = RB_Available(rb);
   uint32_t count = (available < len) ? available : len;
 
-  /* 第一段: tail到数组末尾 */
   uint32_t first = RB_SIZE - rb->tail;
   if (first > count)
   {
@@ -62,7 +59,6 @@ uint32_t RB_Read(RingBuffer *rb, uint8_t *data, uint32_t len)
   }
   memcpy(data, &rb->buf[rb->tail], first);
 
-  /* 第二段: 回绕 */
   if (first < count)
   {
     memcpy(&data[first], rb->buf, count - first);
