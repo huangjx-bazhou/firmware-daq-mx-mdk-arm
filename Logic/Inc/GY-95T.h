@@ -25,8 +25,7 @@
 extern "C" {
 #endif
 
-#include "ringbuffer.h"
-#include "usart.h"
+#include "RingBuffer.h"
 
 #define GY95T_DATA_SIZE 18U
 
@@ -39,7 +38,7 @@ extern RingBuffer g_gy95t_rb;
 /** gy95t 数据缓存 */
 extern uint8_t g_gy95t_data[GY95T_DATA_SIZE];
 
-/*
+/**
  * @brief GY95T初始化
  *
  * @author  黄佳兴
@@ -48,7 +47,7 @@ extern uint8_t g_gy95t_data[GY95T_DATA_SIZE];
  */
 void GY95T_Init(void);
 
-/*
+/**
  * @brief GY95T开始连续输出
  *
  * @author  黄佳兴
@@ -57,7 +56,7 @@ void GY95T_Init(void);
  */
 void GY95T_Start(void);
 
-/*
+/**
  * @brief GY95T停止连续输出
  *
  * @author  黄佳兴
@@ -66,17 +65,20 @@ void GY95T_Start(void);
  */
 void GY95T_Stop(void);
 
-/*
+/**
  * @brief GY95T处理一字节数据
+ *
+ * @param[in] data 要处理的字节数据
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-10
  */
-void GY95T_ProcessData(uint8_t data);
+void GY95T_ProcessByte(uint8_t data);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* GY-95T_H__ */
+
