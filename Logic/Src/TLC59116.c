@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    tlc59116.c
+  * @file    TLC59116.c
   * @brief   This file provides code for the configuration
-  *          of the tlc59116 instances.
+  *          of the TLC59116 instances.
   ******************************************************************************
   * @attention
   *
@@ -18,7 +18,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "tlc59116.h"
+#include "TLC59116.h"
 
 /* USER CODE BEGIN 0*/
 
