@@ -4,3 +4,5 @@ MDK-ARM/DebugConfig
 MDK-ARM/RTE
 MDK-ARM/EventRecorderStub.scvd
 *.uvguix.Administrator
+Middlewares
+FATFS

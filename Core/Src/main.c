@@ -20,7 +20,9 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
+#include "sdmmc.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -236,6 +238,8 @@ int main(void)
   MX_ADC3_Init();
   MX_TIM7_Init();
   MX_USART2_UART_Init();
+  MX_SDMMC1_SD_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
 #ifdef DEBUG_MODE

@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    tlc59116.h
+  * @file    TLC59116.h
   * @brief   This file contains all the function prototypes for
-  *          the tlc59116.c file
+  *          the TLC59116.c file
   ******************************************************************************
   * @attention
   *
