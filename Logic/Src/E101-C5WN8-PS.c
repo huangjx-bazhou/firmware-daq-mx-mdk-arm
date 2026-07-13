@@ -100,19 +100,20 @@ void WIFI_AssembleCommand(uint8_t byte)
 
 void WIFI_ParseCommand(uint8_t* cmd)
 {
-  /* 不处理第3字节，因为它是0x0B，不感兴趣 */
+  /* 不验证第0个字节和第1个字节是不是0x84和0x6F */
 
-  /* TODO: 验证时间戳是否解析正确 */
-  g_timestamp = (uint32_t)cmd[3];
+  /* 不处理第2字节，因为它是0x0B，不感兴趣 */
+
+  /* 不处理第3，4，5，6字节，不感兴趣 */
 
   /* LED亮度解析 */
-  for (uint8_t i = 0; i < LED_COUNT; i++)
+  for (uint8_t i = 0; i < LED_COUNT; ++i)
   {
-    g_led_brightness[i] = cmd[7 + i];
+    g_led_brightness[i] = cmd[7U + i];
   }
 
   /* 通道掩码复制 */
-  memcpy(g_channel_mask, cmd + 23, LED_COUNT * RECVIVER_COUNT / 8);
+  memcpy(g_channel_mask, cmd + 23U, LED_COUNT * RECVIVER_COUNT / 8);
 
   /* 开关机标志解析 */
   if (cmd[55] != g_power_flag)

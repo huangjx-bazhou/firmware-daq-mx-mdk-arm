@@ -285,7 +285,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // 1.处理WIFI串口命令
+    /* 1. 处理WIFI串口数据 */
     if (RB_Available(&g_wifi_rb) > 0)
     {
       uint8_t byte;
@@ -293,65 +293,80 @@ int main(void)
       WIFI_AssembleCommand(byte);
     }
 
-    // 2. 处理离线存储标志改变标志
+    /* 2. 处理GY95T串口数据 */
+    if (RB_Available(&g_gy95t_rb) > 0)
+    {
+      uint8_t byte;
+      RB_ReadByte(&g_gy95t_rb, &byte);
+      GY95T_ProcessByte(byte);
+    }
+
+    /* 3. 处理离线存储标志改变标志 */
     if (g_storage_flag_changed)
     {
       g_storage_flag_changed = false;
     }
 
-    // 3. 处理采样率改变标志
+    /* 4. 处理采样率改变标志 */
     if (g_sample_rate_changed)
     {
       g_sample_rate_changed = false;
 
-      // 新的预分频器值
+      /* 新的预分频器值 */
       uint16_t new_psc = 0U;
-      // 新的自动重载值
+      /* 新的自动重载值 */
       uint16_t new_arr = 0U;
 
-      // 配置定时器6的采样率
+      /* 配置定时器6的采样率 */
       configure_tim6_for_sample_rate(g_sample_rate, &new_psc, &new_arr);
 
-      // 采样率改变，更新定时器6的周期
+      /* 采样率改变，更新定时器6的周期 */
       __HAL_TIM_SET_PRESCALER(&htim6, new_psc);
       __HAL_TIM_SET_AUTORELOAD(&htim6, new_arr);
       HAL_TIM_GenerateEvent(&htim6, TIM_EVENTSOURCE_UPDATE);
     }
 
-    // 4. 处理开始采样标志改变标志
+    /* 5. 处理开始采样标志改变标志 */
     if (g_start_flag_changed)
     {
       g_start_flag_changed = false;
 
       if (g_start_flag)
       {
-        // 当开始采样时，读取一次没有开LED时的原始数据
+        /* 当开始采样时，读取一次没有开LED时的原始数据 */
         //ADS1299_1_Origin_Read();
-        //ADS1299_1_Origin_Read();
+        //ADS1299_2_Origin_Read();
+
+        GY95T_Start();
+
       }
       else
       {
+        /* 当停止采样时，停止GY95T */
+        GY95T_Stop();
+
         g_packet_num = 0U;
         g_tim6_ready_count = 0U;
+        g_timestamp = 0U;
       }
     }
 
-    // 5. 处理USART3发送忙标志，USART3发送处于空闲状态,并且有新的数据包需要发送
-    if (0 == g_usart3_tx_busy && (g_tx_packet_index != g_new_packet_index))
+    /* 6. 处理USART3发送忙标志，USART3发送处于空闲状态,并且有新的数据包需要发送 */
+    if (!g_usart3_tx_busy && (g_tx_packet_index != g_new_packet_index))
     {
-      // 设置为发送忙状态
-      g_usart3_tx_busy = 1;
+      /* 设置为发送忙状态 */
+      g_usart3_tx_busy = true;
 
-      // 下一个要发送的数据包索引
+      /* 下一个要发送的数据包索引 */
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
       HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20);
     }
 
-    // 6.定时器6中断处理
-    if (1 == g_tim6_ready && g_start_flag)
+    /* 7. 处理定时器6中断 */
+    if (g_tim6_ready && g_start_flag)
     {
-      g_tim6_ready = 0;
+      g_tim6_ready = false;
       g_tim6_ready_count++;
 
       uint32_t tim6_start = DWT->CYCCNT;
@@ -363,10 +378,10 @@ int main(void)
         //ADS1299_2_Origin_Read();
       }
 
-      // 循环开启TLC59116-1的16个通道
+      /* 循环开启TLC59116-1的16个通道 */
       for (uint8_t ch = 0; ch < LED_COUNT; ch++)
       {
-        // 第几个LED
+        /* 第几个LED */
         uint8_t led = ch / 2;
 
         uint8_t ads1 =  g_channel_mask[led * 2];
@@ -731,12 +746,12 @@ int main(void)
       // 复制数据
       memcpy(g_packet[g_new_packet_index] + 13, &g_ads_data, 4 * g_ads_data_count);
 
-      // TODO: 处理数据陀螺仪
-      memset(g_packet[g_new_packet_index] + 13 + 4 * g_ads_data_count, 0, 18);
+      /* GY95T数据 */
+      memcpy(g_packet[g_new_packet_index] + 13 + 4 * g_ads_data_count, g_gy95t_data, GY95T_DATA_SIZE);
 
-      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 18] = Get_Battery_Level();
+      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = Get_Battery_Level();
 
-      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 19] = 0;
+      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
