@@ -25,17 +25,29 @@
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
 #include "spi.h"
 
-/* USER CODE BEGIN Prototypes */
+/** ADS1299芯片最大通道数 */
+#define ADS1299_MAX_CHANNEL 8U
 
-extern uint8_t spi_tx_buffer[27];
-extern uint8_t ads_1_origin_rx_buffer[27];
-extern uint8_t ads_2_origin_rx_buffer[27];
-extern int32_t ads_1_origin[8];
-extern int32_t ads_2_origin[8];
+/** ADS1299芯片数量 */
+#define ADS1299_COUNT 2U
+
+/** ADS1299数据大小 */
+#define ADS1299_DATA_SIZE 27U
+
+/* ADS1299发送缓冲区 */
+extern uint8_t ads_tx_buffer[ADS1299_DATA_SIZE];
+/* 第一个ADS1299接收缓冲区 */
+extern uint8_t ads_1_rx_buffer[ADS1299_DATA_SIZE];
+/* 第二个ADS1299接收缓冲区 */
+extern uint8_t ads_2_rx_buffer[ADS1299_DATA_SIZE];
+
+extern uint8_t ads_1_origin_rx_buffer[ADS1299_DATA_SIZE];
+extern uint8_t ads_2_origin_rx_buffer[ADS1299_DATA_SIZE];
+extern int32_t ads_1_origin[ADS1299_MAX_CHANNEL];
+extern int32_t ads_2_origin[ADS1299_MAX_CHANNEL];
 
 /**
  * @brief   复位第1个ADS1299芯片
@@ -202,8 +214,6 @@ void ADS1299_1_Origin_Read(void);
  * @date    2026-06-22
  */
 void ADS1299_2_Origin_Read(void);
-
-/* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }

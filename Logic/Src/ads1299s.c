@@ -18,44 +18,34 @@
   */
 /* USER CODE END Header */
 
-/* Includes ------------------------------------------------------------------*/
 #include "ads1299.h"
-#include "utils.h"
+#include "Utils.h"
 
-/* USER CODE BEGIN 0 */
+/* System Commands */
+#define ADS1299_CMD_WAKEUP  0x02U  /* Wake-up from standby mode */
+#define ADS1299_CMD_STANDBY 0x04U  /* Enter standby mode */
+#define ADS1299_CMD_RESET   0x06U  /* Reset the device */
+#define ADS1299_CMD_START   0x08U  /* Start and restart (synchronize) conversions */
+#define ADS1299_CMD_STOP    0x0AU  /* Stop conversion */
 
-// System Commands
-#define ADS1299_CMD_WAKEUP  0x02U  // Wake-up from standby mode
-#define ADS1299_CMD_STANDBY 0x04U  // Enter standby mode
-#define ADS1299_CMD_RESET   0x06U  // Reset the device
-#define ADS1299_CMD_START   0x08U  // Start and restart (synchronize) conversions
-#define ADS1299_CMD_STOP    0x0AU  // Stop conversion
+/* Data Read Commands */
+#define ADS1299_CMD_RDATAC 0x10U /* Enable Read Data Continuous mode.This mode is the default mode at power-up. */
+#define ADS1299_CMD_SDATAC 0x11U /* Stop Read Data Continuously mode */
+#define ADS1299_CMD_RDATA  0x12U /* Read data by command; supports multiple read back. */
 
-// Data Read Commands
-#define ADS1299_CMD_RDATAC 0x10U // Enable Read Data Continuous mode.This mode is the default mode at power-up.
-#define ADS1299_CMD_SDATAC 0x11U // Stop Read Data Continuously mode
-#define ADS1299_CMD_RDATA  0x12U // Read data by command; supports multiple read back.
-
-// Configuration Registers
+/* Configuration Registers */
 #define ADS1299_REG_CONFIG1 0x01U
 #define ADS1299_REG_CONFIG2 0x02U
 #define ADS1299_REG_CONFIG3 0x03U
 #define ADS1299_REG_CONFIG4 0x17U
 
-uint8_t spi_tx_buffer[27];
-uint8_t ads_1_origin_rx_buffer[27];
-uint8_t ads_2_origin_rx_buffer[27];
-int32_t ads_1_origin[8];
-int32_t ads_2_origin[8];
-
-int32_t ads1299_24_to_32(const uint8_t raw[3])
-{
-    return ((int32_t)(
-        ((uint32_t)raw[0] << 24) |
-        ((uint32_t)raw[1] << 16) |
-        ((uint32_t)raw[2] <<  8)
-    )) >> 8;
-}
+uint8_t ads_tx_buffer[ADS1299_DATA_SIZE];
+uint8_t ads_1_rx_buffer[ADS1299_DATA_SIZE];
+uint8_t ads_2_rx_buffer[ADS1299_DATA_SIZE];
+uint8_t ads_1_origin_rx_buffer[ADS1299_DATA_SIZE];
+uint8_t ads_2_origin_rx_buffer[ADS1299_DATA_SIZE];
+int32_t ads_1_origin[ADS1299_MAX_CHANNEL];
+int32_t ads_2_origin[ADS1299_MAX_CHANNEL];
 
 void ADS1299_1_Reset(void)
 {
@@ -230,11 +220,11 @@ void ADS1299_1_Origin_Read(void)
   }
 
   // 读取ADS12991数据寄存器
-  HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, ads_1_origin_rx_buffer, 27, 100U);
+  HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_1_origin_rx_buffer, 27, 100U);
 
   for (uint8_t i = 0; i < 8; i++)
   {
-    ads_1_origin[i] =  ads1299_24_to_32(&ads_1_origin_rx_buffer[3 + i * 3]);
+    ads_1_origin[i] =  Sign_Extend_24_to_32(&ads_1_origin_rx_buffer[3 + i * 3]);
   }
 
   // 关闭采集
@@ -255,11 +245,11 @@ void ADS1299_2_Origin_Read(void)
   }
 
   // 读取ADS12992数据寄存器
-  HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, ads_2_origin_rx_buffer, 27, 100U);
+  HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_2_origin_rx_buffer, 27, 100U);
 
   for (uint8_t i = 0; i < 8; i++)
   {
-    ads_2_origin[i] =  ads1299_24_to_32(&ads_2_origin_rx_buffer[3 + i * 3]);
+    ads_2_origin[i] =  Sign_Extend_24_to_32(&ads_2_origin_rx_buffer[3 + i * 3]);
   }
 
   // 关闭采集
