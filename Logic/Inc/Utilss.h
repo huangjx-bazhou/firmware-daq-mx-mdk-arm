@@ -39,7 +39,7 @@ void DWT_Init(void);
 
 /**
  * @brief  延时指定微秒数
- * @param us 微秒数
+ * @param[in] us 微秒数
  *
  * @author  黄佳兴
  * @version 0.1
@@ -49,8 +49,8 @@ void Delay_US(uint32_t us);
 
 /**
  * @brief  检查指定位是否为1
- * @param value 要检查的8位值
- * @param bit 要检查的位（0-7）
+ * @param[in] value 要检查的8位值
+ * @param[in] bit 要检查的位（0-7）
  * @return bool 位为1则返回true，否则返回false
  *
  * @author  黄佳兴
@@ -59,8 +59,26 @@ void Delay_US(uint32_t us);
  */
 bool Is_Bit_Set(uint8_t value, uint8_t bit);
 
+/**
+ * @brief  将24位有符号整数（3字节大端序）符号扩展为32位有符号整数
+ * @param[in] raw 指向3字节数组的指针
+ *                 raw[0] = 高字节（符号位在此）
+ *                 raw[1] = 中字节
+ *                 raw[2] = 低字节
+ * @return int32_t 符号扩展后的32位有符号整数值
+ *
+ * @note   适用于ADS1299等24位ΔΣ ADC的数据格式转换
+ *         算法：先左移24位使符号位对齐到Bit31，再算术右移8位实现符号扩展
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-13
+ */
+int32_t Sign_Extend_24_to_32(const uint8_t raw[3]);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __UTILS_H__ */
+

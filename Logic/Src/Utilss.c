@@ -48,3 +48,12 @@ bool Is_Bit_Set(uint8_t value, uint8_t bit)
   if (bit > 7) return false;
   return (value & (1 << bit)) != 0U;
 }
+
+int32_t Sign_Extend_24_to_32(const uint8_t raw[3])
+{
+    return ((int32_t)(
+        ((uint32_t)raw[0] << 24) |
+        ((uint32_t)raw[1] << 16) |
+        ((uint32_t)raw[2] <<  8)
+    )) >> 8;
+}
