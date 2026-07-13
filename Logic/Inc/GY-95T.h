@@ -1,9 +1,9 @@
 ﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    gy95t.h
+  * @file    GY-95T.h
   * @brief   This file contains all the function prototypes for
-  *          the gy95t.c file
+  *          the GY-95T.c file
   ******************************************************************************
   * @attention
   *
@@ -79,4 +79,4 @@ void GY95T_ProcessData(uint8_t data);
 }
 #endif
 
-#endif /* __GY95T_H__ */
+#endif /* GY-95T_H__ */

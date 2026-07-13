@@ -1,8 +1,8 @@
 ﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    gy95t.c
-  * @brief   This file provides code for the acquisition of gy95t.
+  * @file    GY-95T.c
+  * @brief   This file provides code for the acquisition of GY-95T.
   *
   ******************************************************************************
   * @attention
@@ -18,7 +18,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "gy95t.h"
+#include "GY-95T.h"
 
 /** 连续输出命令 */
 static const uint8_t gy95t_start_cmd[] = { 0x00, 0x06, 0x03, 0x00, 0x09 };
@@ -29,13 +29,13 @@ static const uint8_t gy95t_stop_cmd[] = { 0x00, 0x06, 0x03, 0x01, 0x0A };
 /** 超时时间100ms */
 static const uint32_t gy95t_timeout = 100U;
 
-/** gy95t usart2接收缓存 */
+/** GY-95T usart2接收缓存 */
 volatile uint8_t g_gy95t_usart2_rx_byte;
 
-/** gy95t 环形缓冲区 */
+/** GY-95T 环形缓冲区 */
 RingBuffer g_gy95t_rb;
 
-/** gy95t 数据缓存 */
+/** GY-95T 数据缓存 */
 uint8_t g_gy95t_data[GY95T_DATA_SIZE];
 
 #define RECEIVED_NONE 0U
@@ -45,10 +45,10 @@ uint8_t g_gy95t_data[GY95T_DATA_SIZE];
 #define RECEIVED_1B   4U
 
 /** 状态 */
-static uint8_t state = RECEIVED_NONE;
+static uint8_t gy95t_received_state = RECEIVED_NONE;
 
 /** 收到的数据长度 */
-static uint8_t received = 0U;
+static uint8_t gy95t_received = 0U;
 
 void GY95T_Init(void)
 {
@@ -67,33 +67,33 @@ void GY95T_Stop(void)
 
 void GY95T_ProcessData(uint8_t data)
 {
-  switch (state)
+  switch (gy95t_received_state)
   {
     case RECEIVED_NONE:
-      state = 0xA4 == data ? RECEIVED_A4 : RECEIVED_NONE;
+      gy95t_received_state = 0xA4 == data ? RECEIVED_A4 : RECEIVED_NONE;
       break;
     case RECEIVED_A4:
-      state = 0x03 == data ? RECEIVED_03 : RECEIVED_NONE;
+      gy95t_received_state = 0x03 == data ? RECEIVED_03 : RECEIVED_NONE;
       break;
     case RECEIVED_03:
-      state = 0x08 == data ? RECEIVED_08 : RECEIVED_NONE;
+      gy95t_received_state = 0x08 == data ? RECEIVED_08 : RECEIVED_NONE;
       break;
     case RECEIVED_08:
-      state = 0x1B == data ? RECEIVED_1B : RECEIVED_NONE;
+      gy95t_received_state = 0x1B == data ? RECEIVED_1B : RECEIVED_NONE;
       break;
     case RECEIVED_1B:
-      if (received >= 28U)
+      if (gy95t_received >= 28U)
       {
-        received = 0U;
-        state = RECEIVED_NONE;
+        gy95t_received = 0U;
+        gy95t_received_state = RECEIVED_NONE;
       }
-      else if (received >= GY95T_DATA_SIZE)
+      else if (gy95t_received >= GY95T_DATA_SIZE)
       {
-        received++;
+        gy95t_received++;
       }
       else
       {
-        g_gy95t_data[received++] = data;
+        g_gy95t_data[gy95t_received++] = data;
       }
       break;
     default:
