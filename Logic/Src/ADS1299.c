@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    ads1299.c
+  * @file    ADS1299.c
   * @brief   This file provides code for the configuration
   *          of the ADS1299 ADC.
   ******************************************************************************
@@ -18,7 +18,7 @@
   */
 /* USER CODE END Header */
 
-#include "ads1299.h"
+#include "ADS1299.h"
 #include "Utils.h"
 
 /* System Commands */

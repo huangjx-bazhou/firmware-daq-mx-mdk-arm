@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    ads1299.h
+  * @file    ADS1299.h
   * @brief   This file contains all the function prototypes for
-  *          the ads1299.c file
+  *          the ADS1299.c file
   ******************************************************************************
   * @attention
   *
