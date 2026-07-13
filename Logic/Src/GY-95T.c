@@ -63,21 +63,21 @@ void GY95T_Stop(void)
   HAL_UART_Transmit(&huart2, gy95t_stop_cmd, sizeof(gy95t_stop_cmd), gy95t_timeout);
 }
 
-void GY95T_ProcessByte(uint8_t data)
+void GY95T_ProcessByte(uint8_t byte)
 {
   switch (gy95t_received_state)
   {
     case RECEIVED_NONE:
-      gy95t_received_state = 0xA4 == data ? RECEIVED_A4 : RECEIVED_NONE;
+      gy95t_received_state = 0xA4 == byte ? RECEIVED_A4 : RECEIVED_NONE;
       break;
     case RECEIVED_A4:
-      gy95t_received_state = 0x03 == data ? RECEIVED_03 : RECEIVED_NONE;
+      gy95t_received_state = 0x03 == byte ? RECEIVED_03 : RECEIVED_NONE;
       break;
     case RECEIVED_03:
-      gy95t_received_state = 0x08 == data ? RECEIVED_08 : RECEIVED_NONE;
+      gy95t_received_state = 0x08 == byte ? RECEIVED_08 : RECEIVED_NONE;
       break;
     case RECEIVED_08:
-      gy95t_received_state = 0x1B == data ? RECEIVED_1B : RECEIVED_NONE;
+      gy95t_received_state = 0x1B == byte ? RECEIVED_1B : RECEIVED_NONE;
       break;
     case RECEIVED_1B:
       if (gy95t_received >= 28U)
@@ -91,7 +91,7 @@ void GY95T_ProcessByte(uint8_t data)
       }
       else
       {
-        g_gy95t_data[gy95t_received++] = data;
+        g_gy95t_data[gy95t_received++] = byte;
       }
       break;
     default:
