@@ -30,12 +30,13 @@
 /* USER CODE BEGIN Includes */
 
 #include <string.h>
-#include "ads1299.h"
-#include "batterylevel.h"
-#include "parsecmd.h"
-#include "wifiringbuffer.h"
-#include "tlc59116.h"
-#include "utils.h"
+#include "ADS1299.h"
+#include "BatteryLevel.h"
+#include "E101-C5WN8-PS.h"
+#include "GY-95T.h"
+#include "RingBuffer.h"
+#include "TLC59116.h"
+#include "Utils.h"
 
 /* USER CODE END Includes */
 
@@ -74,8 +75,7 @@
 
 static volatile uint32_t g_dwt_now = 0U;                  // 当前dwt值
 
-
-uint32_t g_tim6_cost = 0U;
+static volatile uint32_t g_tim6_cost = 0U;                // TIM6耗时
 
 // TLC59116-1 
 static volatile uint32_t g_cost1_turn_on_led = 0U;        // 开LED耗时
@@ -134,26 +134,16 @@ static uint8_t g_test_packet[512];
 
 #endif
 
-// TIM6中断标志(0: 未中断, 1: 中断)
-static volatile uint8_t g_tim6_ready = 0U;
+// TIM6中断标志
+static volatile bool g_tim6_ready = false;
 
-// USART3发送忙标志(0: 未发送, 1: 发送中)
-static volatile uint8_t g_usart3_tx_busy = 0U;
+// USART3发送忙标志
+static volatile bool g_usart3_tx_busy = false;
 
 // 定时器6中断计数
 static uint16_t g_tim6_ready_count = 0U;
 
-// USART3接收缓冲区(WIFI)
-static uint8_t g_usart3_rx_byte = 0U;
 
-// SPI ADS1299
-uint8_t spi_ads_1_rx_buffer[27];  // 第一个ADS1299接收缓冲区
-uint8_t spi_ads_2_rx_buffer[27];  // 第二个ADS1299接收缓冲区
-
-// 逐字节读取并验证头字节
-static uint8_t cmd_state = 0;  // 0:等待第一个头字节, 1:等待第二个头字节, 2:读取数据
-static uint8_t cmd_buf[CMD_PACKET_SIZE];  // CMD_PACKET_SIZE已包括2字节头
-static uint16_t cmd_len = 0;
 
 // ADS1299数据
 static int32_t g_ads_data[LED_COUNT * RECVIVER_COUNT * CHANNEL_COUNT_PER_LED];
@@ -195,15 +185,6 @@ static void MPU_Config(void);
   * @param new_arr 新的自动重载值（0-65535）
   */
 static void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* new_arr);
-
-static int32_t ads1299_24_to_32(const uint8_t raw[3])
-{
-    return ((int32_t)(
-        ((uint32_t)raw[0] << 24) |
-        ((uint32_t)raw[1] << 16) |
-        ((uint32_t)raw[2] <<  8)
-    )) >> 8;
-}
 
 /* USER CODE END PFP */
 
@@ -270,28 +251,32 @@ int main(void)
     g_packet[i][1] = 0x6F;
     g_packet[i][2] = 0x0B;
   }
-	
-	memset(g_led_brightness, 0xFF, sizeof(g_led_brightness));
 
   DWT_Init();
 
   // 初始化USART2接收中断
-  //HAL_UART_Receive_IT(&huart2, &g_usart2_rx_byte, 1U);
+  HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
   
   // 初始化USART3接收中断
-  HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
+  HAL_UART_Receive_IT(&huart3, &g_wifi_usart3_rx_byte, 1U);
 
   HAL_TIM_Base_Start_IT(&htim6);
 
   HAL_TIM_Base_Start_IT(&htim7);
 
-  // 初始化GY95T
-  //GY95T_Init();
-  // 初始化所有(2个)TLC59116为PWM模式，设置所有通道的PWM值为0
+  /* 初始化GY95T */
+  GY95T_Init();
+
+  /* 初始化WIFI */
+  WIFI_Init();
+
+  /* 初始化所有(2个)TLC59116为PWM模式，设置所有通道的PWM值为0 */
   TLC59116_Init();
-  // 初始化第1个ADS1299芯片
+
+  /* 初始化第1个ADS1299芯片 */
   ADS1299_1_Init();
-  // 初始化第2个ADS1299芯片
+
+  /* 初始化第2个ADS1299芯片 */
   ADS1299_2_Init();
 
   /* USER CODE END 2 */
@@ -301,55 +286,23 @@ int main(void)
   while (1)
   {
     // 1.处理WIFI串口命令
-    if (wifi_rb_available() > 0)
+    if (RB_Available(&g_wifi_rb) > 0)
     {
       uint8_t byte;
-      wifi_rb_read(&byte);
-
-      switch (cmd_state)
-      {
-        case 0:
-          if (byte == 0x84)  // 第一个头字节
-          {
-            cmd_buf[0] = byte;
-            cmd_state = 1;
-          }
-          break;
-
-        case 1:
-          if (byte == 0x6F)  // 第二个头字节
-          {
-            cmd_buf[1] = byte;
-            cmd_state = 2;
-            cmd_len = 2;  // 已写入2字节头
-          }
-          else
-          {
-            cmd_state = 0;  // 头不匹配，重新开始
-          }
-          break;
-
-        case 2:
-          cmd_buf[cmd_len++] = byte;
-          if (cmd_len >= CMD_PACKET_SIZE)
-          {
-            parse_cmd(cmd_buf);  // 传递完整数据包（包括头）
-            cmd_state = 0;  // 解析完成，重新等待头
-          }
-          break;
-      }
+      RB_ReadByte(&g_wifi_rb, &byte);
+      WIFI_AssembleCommand(byte);
     }
 
     // 2. 处理离线存储标志改变标志
-    if (1 == g_storage_flag_changed)
+    if (g_storage_flag_changed)
     {
-      g_storage_flag_changed = 0;
+      g_storage_flag_changed = false;
     }
 
     // 3. 处理采样率改变标志
-    if (1 == g_sample_rate_changed)
+    if (g_sample_rate_changed)
     {
-      g_sample_rate_changed = 0;
+      g_sample_rate_changed = false;
 
       // 新的预分频器值
       uint16_t new_psc = 0U;
@@ -366,11 +319,11 @@ int main(void)
     }
 
     // 4. 处理开始采样标志改变标志
-    if (1 == g_start_flag_changed)
+    if (g_start_flag_changed)
     {
-      g_start_flag_changed = 0;
+      g_start_flag_changed = false;
 
-      if (CMD_ENABLE_FLAG == g_start_flag)
+      if (g_start_flag)
       {
         // 当开始采样时，读取一次没有开LED时的原始数据
         //ADS1299_1_Origin_Read();
@@ -378,8 +331,8 @@ int main(void)
       }
       else
       {
-        g_packet_num = 0;
-        g_tim6_ready_count = 0;
+        g_packet_num = 0U;
+        g_tim6_ready_count = 0U;
       }
     }
 
@@ -396,7 +349,7 @@ int main(void)
     }
 
     // 6.定时器6中断处理
-    if (1 == g_tim6_ready && CMD_ENABLE_FLAG == g_start_flag)
+    if (1 == g_tim6_ready && g_start_flag)
     {
       g_tim6_ready = 0;
       g_tim6_ready_count++;
@@ -436,19 +389,23 @@ int main(void)
 
         uint32_t ads1_channel_start = DWT->CYCCNT;
 
+        if (ads1 != 0)
+        {
+          ADS1299_1_CS_Low();
+          ADS1299_Start_ByCmd();
+          ADS1299_1_CS_High();
+        }
+
+        if (ads2 != 0)
+        {
+          ADS1299_2_CS_Low();
+          ADS1299_Start_ByCmd();
+          ADS1299_2_CS_High();
+        }
+
         // led与ads1建立了通道
         if (ads1 != 0)
         {
-          uint32_t ads1299_1_cs_low_start = DWT->CYCCNT;
-
-          // 选择第一个ADS1299芯片
-          ADS1299_1_CS_Low();
-
-          uint32_t ads1299_1_start_start = DWT->CYCCNT;
-
-          // 开启采集
-          ADS1299_Start_ByCmd();
-
           uint32_t ads1299_1_wait_drdy_start = DWT->CYCCNT;
 
           // 等待DRDY引脚为低电平
@@ -458,13 +415,12 @@ int main(void)
 
           uint32_t ads1299_1_read_data_start = DWT->CYCCNT;
 
+          ADS1299_1_CS_Low();
+
           // 读取ADS12991数据寄存器
-          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+          HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_1_rx_buffer, 27, 100U);
 
           uint32_t ads1299_1_stop_start = DWT->CYCCNT;
-
-          // 关闭采集
-          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_1_cs_high_start = DWT->CYCCNT;
 
@@ -477,7 +433,7 @@ int main(void)
             uint8_t set = Is_Bit_Set(ads1, i);
             if (1 == set)
             {
-              int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
+              int32_t value =  Sign_Extend_24_to_32(&ads_1_rx_buffer[3 + i * 3]);
               g_ads_data[g_ads_data_count++] = value - ads_1_origin[i];
             }
           }
@@ -485,8 +441,8 @@ int main(void)
           uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
 
           // 测试耗时代码
-          g_cost11_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
-          g_cost11_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
+          //g_cost11_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
+          //g_cost11_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
           g_cost11_wait_drdy = ads1299_1_read_data_start - ads1299_1_wait_drdy_start;
           g_cost11_read_data = ads1299_1_stop_start - ads1299_1_read_data_start;
           g_cost11_stop_ads1299 = ads1299_1_cs_high_start - ads1299_1_stop_start;
@@ -499,16 +455,7 @@ int main(void)
         // led与ads2建立了通道
         if (ads2 != 0)
         {
-          uint32_t ads1299_2_cs_low_start = DWT->CYCCNT;
-
-          // 选择第2个ADS1299芯片
-          ADS1299_2_CS_Low();
-
-          uint32_t ads1299_2_start_start = DWT->CYCCNT;
-
-          // 开启采集
-          ADS1299_Start_ByCmd();
-          
+  
           uint32_t ads1299_2_wait_drdy_start = DWT->CYCCNT;
 
           // 等待DRDY引脚为低电平
@@ -518,14 +465,13 @@ int main(void)
           
           uint32_t ads1299_2_read_data_start = DWT->CYCCNT;
 
+          ADS1299_2_CS_Low();
+
           // 读取ADS12992数据寄存器
-          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
+          HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_2_rx_buffer, 27, 100U);
           
           uint32_t ads1299_2_stop_start = DWT->CYCCNT;
-
-          // 关闭采集
-          ADS1299_Stop_ByCmd();
-          
+  
           uint32_t ads1299_2_cs_high_start = DWT->CYCCNT;
 
           ADS1299_2_CS_High();
@@ -537,7 +483,7 @@ int main(void)
             uint8_t set = Is_Bit_Set(ads2, i);
             if (1 == set)
             {
-              int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
+              int32_t value =  Sign_Extend_24_to_32(&ads_2_rx_buffer[3 + i * 3]);
               g_ads_data[g_ads_data_count++] = value - ads_2_origin[i];
             }
           }
@@ -545,13 +491,27 @@ int main(void)
           uint32_t ads1299_2_process_data_end = DWT->CYCCNT;
 
           // 测试耗时代码
-          g_cost12_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
-          g_cost12_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
+          //g_cost12_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
+          //g_cost12_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
           g_cost12_wait_drdy = ads1299_2_read_data_start - ads1299_2_wait_drdy_start;
           g_cost12_read_data = ads1299_2_stop_start - ads1299_2_read_data_start;
           g_cost12_stop_ads1299 = ads1299_2_cs_high_start - ads1299_2_stop_start;
           g_cost12_cs_high = ads1299_2_process_data_start - ads1299_2_cs_high_start;
           g_cost12_process_data = ads1299_2_process_data_end - ads1299_2_process_data_start;
+        }
+
+        if (ads1 != 0)
+        {
+          ADS1299_1_CS_Low();
+          ADS1299_Stop_ByCmd();
+          ADS1299_1_CS_High();
+        }
+
+        if (ads2 != 0)
+        {
+          ADS1299_2_CS_Low();
+          ADS1299_Stop_ByCmd();
+          ADS1299_2_CS_High();
         }
 
         uint32_t turn_off_led_start = DWT->CYCCNT;
@@ -594,18 +554,24 @@ int main(void)
 
         uint32_t ads1_channel_start = DWT->CYCCNT;
 
+        if (ads1 != 0)
+        {
+          ADS1299_1_CS_Low();
+          ADS1299_Start_ByCmd();
+          ADS1299_1_CS_High();
+        }
+
+        if (ads2 != 0)
+        {
+          ADS1299_2_CS_Low();
+          ADS1299_Start_ByCmd();
+          ADS1299_2_CS_High();
+        }
+
         // led与ads1建立了通道
         if (ads1 != 0)
         {
-          uint32_t ads1299_1_cs_low_start = DWT->CYCCNT;
 
-          // 选择第一个ADS1299芯片
-          ADS1299_1_CS_Low();
-
-          uint32_t ads1299_1_start_start = DWT->CYCCNT;
-
-          // 开启采集
-          ADS1299_Start_ByCmd();
 
           uint32_t ads1299_1_wait_drdy_start = DWT->CYCCNT;
 
@@ -614,15 +580,14 @@ int main(void)
           {
           }
 
+          ADS1299_1_CS_Low();
+
           uint32_t ads1299_1_read_data_start = DWT->CYCCNT;
 
           // 读取ADS12991数据寄存器
-          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_1_rx_buffer, 27, 100U);
+          HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_1_rx_buffer, 27, 100U);
 
           uint32_t ads1299_1_stop_start = DWT->CYCCNT;
-
-          // 关闭采集
-          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_1_cs_high_start = DWT->CYCCNT;
 
@@ -635,7 +600,7 @@ int main(void)
             uint8_t set = Is_Bit_Set(ads1, i);
             if (1 == set)
             {
-              int32_t value =  ads1299_24_to_32(&spi_ads_1_rx_buffer[3 + i * 3]);
+              int32_t value =  Sign_Extend_24_to_32(&ads_1_rx_buffer[3 + i * 3]);
               g_ads_data[g_ads_data_count++] = value - ads_1_origin[i];
             }
           }
@@ -643,8 +608,8 @@ int main(void)
           uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
 
           // 测试耗时代码
-          g_cost21_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
-          g_cost21_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
+          //g_cost21_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
+          //g_cost21_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
           g_cost21_wait_drdy = ads1299_1_read_data_start - ads1299_1_wait_drdy_start;
           g_cost21_read_data = ads1299_1_stop_start - ads1299_1_read_data_start;
           g_cost21_stop_ads1299 = ads1299_1_cs_high_start - ads1299_1_stop_start;
@@ -657,16 +622,6 @@ int main(void)
         // led与ads2建立了通道
         if (ads2 != 0)
         {
-          uint32_t ads1299_2_cs_low_start = DWT->CYCCNT;
-
-          // 选择第2个ADS1299芯片
-          ADS1299_2_CS_Low();
-
-          uint32_t ads1299_2_start_start = DWT->CYCCNT;
-
-          // 开启采集
-          ADS1299_Start_ByCmd();
-
           uint32_t ads1299_2_wait_drdy_start = DWT->CYCCNT;
 
           // 等待DRDY引脚为低电平
@@ -676,13 +631,12 @@ int main(void)
 
           uint32_t ads1299_2_read_data_start = DWT->CYCCNT;
 
+          ADS1299_2_CS_Low();
+
           // 读取ADS12992数据寄存器
-          HAL_SPI_TransmitReceive(&hspi1, spi_tx_buffer, spi_ads_2_rx_buffer, 27, 100U);
+          HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_2_rx_buffer, 27, 100U);
 
           uint32_t ads1299_2_stop_start = DWT->CYCCNT;
-
-          // 关闭采集
-          ADS1299_Stop_ByCmd();
 
           uint32_t ads1299_2_cs_high_start = DWT->CYCCNT;
 
@@ -695,7 +649,7 @@ int main(void)
             uint8_t set = Is_Bit_Set(ads2, i);
             if (1 == set)
             {
-              int32_t value =  ads1299_24_to_32(&spi_ads_2_rx_buffer[3 + i * 3]);
+              int32_t value =  Sign_Extend_24_to_32(&ads_2_rx_buffer[3 + i * 3]);
               g_ads_data[g_ads_data_count++] = value - ads_2_origin[i];
             }
           }
@@ -703,8 +657,8 @@ int main(void)
           uint32_t ads1299_2_process_data_end = DWT->CYCCNT;
 
           // 测试耗时代码
-          g_cost22_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
-          g_cost22_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
+          //g_cost22_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
+          //g_cost22_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
           g_cost22_wait_drdy = ads1299_2_read_data_start - ads1299_2_wait_drdy_start;
           g_cost22_read_data = ads1299_2_stop_start - ads1299_2_read_data_start;
           g_cost22_stop_ads1299 = ads1299_2_cs_high_start - ads1299_2_stop_start;
@@ -712,7 +666,24 @@ int main(void)
           g_cost22_process_data = ads1299_2_process_data_end - ads1299_2_process_data_start;
         }
 
+
+        if (ads1 != 0)
+        {
+          ADS1299_1_CS_Low();
+          ADS1299_Stop_ByCmd();
+          ADS1299_1_CS_High();
+        }
+
+        if (ads2 != 0)
+        {
+          ADS1299_2_CS_Low();
+          ADS1299_Stop_ByCmd();
+          ADS1299_2_CS_High();
+        }
+
         uint32_t turn_off_led_start = DWT->CYCCNT;
+
+
 
         // 关闭LED
         TLC59116_2_SetPwm(ch, 0);
@@ -763,7 +734,7 @@ int main(void)
       // TODO: 处理数据陀螺仪
       memset(g_packet[g_new_packet_index] + 13 + 4 * g_ads_data_count, 0, 18);
 
-      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 18] = get_battery_level();
+      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 18] = Get_Battery_Level();
 
       g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + 19] = 0;
 
@@ -901,93 +872,47 @@ void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* 
 }
 
 /**
-  * @brief   处理GPIO外部中断，连接ADS1299芯片的DRDY引脚，当DRDY引脚拉低时，触发中断，读取数据寄存器的内容
-  * @param   GPIO_Pin  GPIO引脚号
-  * @retval  None
-  */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  // PB0(连接第一个ADS1299的DRDY引脚) 下降沿中断处理逻辑
-  if (GPIO_Pin == GPIO_PIN_0)
-  {
-    // 将ADS1299_1的CS引脚拉低，读取数据寄存器
-    ADS1299_1_CS_Low();
-
-    // 读取ADS1299_1的数据寄存器
-    HAL_SPI_TransmitReceive_DMA(&hspi1,
-                                spi_tx_buffer,
-                                spi_ads_1_rx_buffer,
-                                27);
-  }
-}
-
-/**
-  * @brief   SPI DMA收发完成回调函数
-  * @param   hspi  SPI句柄
-  * @retval  None
-  */
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
-{
-  if (hspi->Instance == SPI1)
-  {
-    ADS1299_1_CS_High();
-  }
-}
-
-/**
-  * @brief   USART的半满完成回调
-  * @param   huart  UART句柄
-  */
-void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+ * @brief   USART的接收完成回调
+ * @param   huart  UART句柄
+ */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (USART2 == huart->Instance)
   {
+    RB_WriteByte(&g_gy95t_rb, g_gy95t_usart2_rx_byte);
+    HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
+  }
+  else if (USART3 == huart->Instance)
+  {
+    RB_WriteByte(&g_wifi_rb, g_wifi_usart3_rx_byte);
+    HAL_UART_Receive_IT(&huart3, &g_wifi_usart3_rx_byte, 1U);
   }
 }
 
 /**
-  * @brief   USART的全满完成回调
-  * @param   huart  UART句柄
-  */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART2)
-  {
-  }
-  else if (huart->Instance == USART3)
-  {
-    // 处理USART3的接收中断，USART3用于与WIFI模块通信，接收上位机命令
-    // 将数据写入环形缓冲区
-    wifi_rb_write(g_usart3_rx_byte);
-    HAL_UART_Receive_IT(&huart3, &g_usart3_rx_byte, 1U);
-  }
-}
-
-/**
-  * @brief   处理USART3的发送中断，USART3用于与WIFI模块通信
-  * @param   huart  UART句柄
-  */
+ * @brief   USART的发送完成回调
+ * @param   huart  UART句柄
+ */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART3)
-    {
-        g_usart3_tx_busy = 0U;
-    }
+  if (USART3 == huart->Instance)
+  {
+    g_usart3_tx_busy = false;
+  }
 }
 
 /**
-  * @brief   TIM6周期溢出回调函数
-  * @param   htim  定时器句柄
-  * @retval  None
-  */
+ * @brief   定时器周期溢出回调函数
+ * @param   htim  定时器句柄
+ * @retval  None
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim->Instance == TIM6)
+  if (TIM6 == htim->Instance)
   {
-    /* 设置定时器6中断标志位 */
-    g_tim6_ready = 1;
+    g_tim6_ready = true;
   }
-  else if (htim->Instance == TIM7)
+  else if (TIM7 == htim->Instance)
   {
     g_timestamp++;
   }

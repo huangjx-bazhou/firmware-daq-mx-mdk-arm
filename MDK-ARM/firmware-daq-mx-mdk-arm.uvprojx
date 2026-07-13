@@ -808,44 +808,39 @@
           <GroupName>Application/User/Logic</GroupName>
           <Files>
             <File>
-              <FileName>ads1299.c</FileName>
+              <FileName>ADS1299.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\ads1299.c</FilePath>
+              <FilePath>..\Logic\Src\ADS1299.c</FilePath>
             </File>
             <File>
-              <FileName>batterylevel.c</FileName>
+              <FileName>BatteryLevel.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\batterylevel.c</FilePath>
+              <FilePath>..\Logic\Src\BatteryLevel.c</FilePath>
             </File>
             <File>
-              <FileName>gy95t.c</FileName>
+              <FileName>E101-C5WN8-PS.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\gy95t.c</FilePath>
+              <FilePath>..\Logic\Src\E101-C5WN8-PS.c</FilePath>
             </File>
             <File>
-              <FileName>gy95tringbuffer.c</FileName>
+              <FileName>GY-95T.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\gy95tringbuffer.c</FilePath>
+              <FilePath>..\Logic\Src\GY-95T.c</FilePath>
             </File>
             <File>
-              <FileName>parsecmd.c</FileName>
+              <FileName>RingBuffer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\parsecmd.c</FilePath>
+              <FilePath>..\Logic\Src\RingBuffer.c</FilePath>
             </File>
             <File>
-              <FileName>tlc59116.c</FileName>
+              <FileName>TLC59116.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\tlc59116.c</FilePath>
+              <FilePath>..\Logic\Src\TLC59116.c</FilePath>
             </File>
             <File>
-              <FileName>utils.c</FileName>
+              <FileName>Utils.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Logic\Src\utils.c</FilePath>
-            </File>
-            <File>
-              <FileName>wifiringbuffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Logic\Src\wifiringbuffer.c</FilePath>
+              <FilePath>..\Logic\Src\Utils.c</FilePath>
             </File>
           </Files>
         </Group>
