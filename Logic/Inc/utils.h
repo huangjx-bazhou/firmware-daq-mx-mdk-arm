@@ -1,9 +1,9 @@
 ﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    utils.h
+  * @file    Utils.h
   * @brief   This file contains all the function prototypes for
-  *          the utils.c file
+  *          the Utils.c file
   ******************************************************************************
   * @attention
   *
@@ -25,38 +25,39 @@
 extern "C" {
 #endif
 
-#include "main.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 /**
-  * @brief  初始化DWT计时器
-
-  * @author  黄佳兴
-  * @version 0.1
-  * @date    2026-06-29
-  */
+ * @brief  初始化DWT计时器
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-29
+ */
 void DWT_Init(void);
 
 /**
-  * @brief  延时指定微秒数
-  * @param us 微秒数
-  *
-  * @author  黄佳兴
-  * @version 0.1
-  * @date    2026-06-29
-  */
+ * @brief  延时指定微秒数
+ * @param us 微秒数
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-06-29
+ */
 void Delay_US(uint32_t us);
 
 /**
-  * @brief  检查指定位是否为1
-  * @param value 要检查的8位值
-  * @param bit 要检查的位（0-7）
-  * @return uint8_t 位为1则返回1，否则返回0
-  *
-  * @author  黄佳兴
-  * @version 0.1
-  * @date    2026-07-01
-  */
-uint8_t Is_Bit_Set(uint8_t value, uint8_t bit);
+ * @brief  检查指定位是否为1
+ * @param value 要检查的8位值
+ * @param bit 要检查的位（0-7）
+ * @return bool 位为1则返回true，否则返回false
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-01
+ */
+bool Is_Bit_Set(uint8_t value, uint8_t bit);
 
 #ifdef __cplusplus
 }
