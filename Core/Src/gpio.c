@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    gpio.c
@@ -55,22 +55,19 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ADS1299_1_CS_Pin|TLC59116_2_RESET_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ADS1299_1_CS_GPIO_Port, ADS1299_1_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ADS1299_2_RESET_GPIO_Port, ADS1299_2_RESET_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ADS1299_2_RESET_Pin|TLC59116_2_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS1299_START_GPIO_Port, ADS1299_START_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TLC59116_1_RESET_GPIO_Port, TLC59116_1_RESET_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, TLC59116_1_RESET_Pin|ADS1299_1_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ADS1299_2_CS_GPIO_Port, ADS1299_2_CS_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ADS1299_1_RESET_GPIO_Port, ADS1299_1_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : Power_Pin */
   GPIO_InitStruct.Pin = Power_Pin;
@@ -85,19 +82,19 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ADS1299_2_DRDY_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ADS1299_1_CS_Pin TLC59116_2_RESET_Pin */
-  GPIO_InitStruct.Pin = ADS1299_1_CS_Pin|TLC59116_2_RESET_Pin;
+  /*Configure GPIO pin : ADS1299_1_CS_Pin */
+  GPIO_InitStruct.Pin = ADS1299_1_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(ADS1299_1_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ADS1299_2_RESET_Pin */
-  GPIO_InitStruct.Pin = ADS1299_2_RESET_Pin;
+  /*Configure GPIO pins : ADS1299_2_RESET_Pin TLC59116_2_RESET_Pin */
+  GPIO_InitStruct.Pin = ADS1299_2_RESET_Pin|TLC59116_2_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ADS1299_2_RESET_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ADS1299_1_DRDY_Pin */
   GPIO_InitStruct.Pin = ADS1299_1_DRDY_Pin;
@@ -112,12 +109,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ADS1299_START_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : TLC59116_1_RESET_Pin */
-  GPIO_InitStruct.Pin = TLC59116_1_RESET_Pin;
+  /*Configure GPIO pins : TLC59116_1_RESET_Pin ADS1299_1_RESET_Pin */
+  GPIO_InitStruct.Pin = TLC59116_1_RESET_Pin|ADS1299_1_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TLC59116_1_RESET_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ADS1299_2_CS_Pin */
   GPIO_InitStruct.Pin = ADS1299_2_CS_Pin;
@@ -125,13 +122,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ADS1299_2_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ADS1299_1_RESET_Pin */
-  GPIO_InitStruct.Pin = ADS1299_1_RESET_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ADS1299_1_RESET_GPIO_Port, &GPIO_InitStruct);
 
 }
 
