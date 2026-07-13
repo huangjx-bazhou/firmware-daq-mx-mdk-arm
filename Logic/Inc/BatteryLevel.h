@@ -1,9 +1,9 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    batterylevel.h
+  * @file    BatteryLevel.h
   * @brief   This file contains all the function prototypes for
-  *          the batterylevel.c file
+  *          the BatteryLevel.c file
   ******************************************************************************
   * @attention
   *
@@ -25,15 +25,15 @@
 extern "C" {
 #endif
 
-#include "adc.h"
+#include <stdint.h>
 
-// adc3的采样值
+/** adc3的采样值 */ 
 extern uint32_t g_adc3_sample;
 
-// 电压，根据adc3的采样值计算得到
+/** 电压，根据adc3的采样值计算得到 */
 extern float g_battery_voltage;
 
-// 电量，由电压值计算得到
+/** 电量，由电压值计算得到 */
 extern uint8_t g_battery_level;
 
 /**

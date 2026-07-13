@@ -1,9 +1,9 @@
 ﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    batterylevel.c
-  * @brief   This file provides code for the acquisition
-  *          of batterylevel.
+  * @file    BatteryLevel.c
+  * @brief   This file provides code for the acquisition of BatteryLevel.
+  *
   ******************************************************************************
   * @attention
   *
@@ -18,7 +18,8 @@
   */
 /* USER CODE END Header */
 
-#include "batterylevel.h"
+#include "BatteryLevel.h"
+#include "adc.h"
 
 uint32_t g_adc3_sample = 0U;
 
@@ -38,7 +39,7 @@ uint32_t Get_ADC3_Sample(void)
 float Get_Battery_Voltage(void)
 {
   Get_ADC3_Sample();
-  // TODO: 从ADC3配置中获取分辨率
+  /* TODO: 从ADC3配置中获取分辨率 */
   g_battery_voltage = (float)g_adc3_sample / 65535.0f * 3.27f;
   return g_battery_voltage;
 }
