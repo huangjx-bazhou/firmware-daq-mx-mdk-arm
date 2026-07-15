@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    sdmmc.c
@@ -32,7 +32,7 @@ void MX_SDMMC1_SD_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC1_Init 0 */
-
+  HAL_Delay(100);
   /* USER CODE END SDMMC1_Init 0 */
 
   /* USER CODE BEGIN SDMMC1_Init 1 */
@@ -43,7 +43,7 @@ void MX_SDMMC1_SD_Init(void)
   hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd1.Init.ClockDiv = 0;
+  hsd1.Init.ClockDiv = 398;
   if (HAL_SD_Init(&hsd1) != HAL_OK)
   {
     Error_Handler();
@@ -58,22 +58,11 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
   if(sdHandle->Instance==SDMMC1)
   {
   /* USER CODE BEGIN SDMMC1_MspInit 0 */
 
   /* USER CODE END SDMMC1_MspInit 0 */
-
-  /** Initializes the peripherals clock
-  */
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
-    PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
     /* SDMMC1 clock enable */
     __HAL_RCC_SDMMC1_CLK_ENABLE();
 
@@ -90,15 +79,15 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
                           |GPIO_PIN_12;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO1;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_2;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO1;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
