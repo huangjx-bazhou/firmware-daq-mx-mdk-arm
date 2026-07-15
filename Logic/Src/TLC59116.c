@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "TLC59116.h"
+#include "Utils.h"
 
 /* USER CODE BEGIN 0*/
 
@@ -31,6 +32,22 @@
 #define TLC59116_REG_LEDOUT2  0x16U
 #define TLC59116_REG_LEDOUT3  0x17U
 #define TLC59116_REG_PWM0     0x02U
+
+void TLC59116_1_Reset(void)
+{
+  HAL_GPIO_WritePin(TLC59116_1_RESET_GPIO_Port, TLC59116_1_RESET_Pin, GPIO_PIN_RESET);
+  Delay_US(1);
+  HAL_GPIO_WritePin(TLC59116_1_RESET_GPIO_Port, TLC59116_1_RESET_Pin, GPIO_PIN_SET);
+  Delay_US(1);
+}
+
+void TLC59116_2_Reset(void)
+{
+  HAL_GPIO_WritePin(TLC59116_2_RESET_GPIO_Port, TLC59116_2_RESET_Pin, GPIO_PIN_RESET);
+  Delay_US(1);
+  HAL_GPIO_WritePin(TLC59116_2_RESET_GPIO_Port, TLC59116_2_RESET_Pin, GPIO_PIN_SET);
+  Delay_US(1);
+}
 
 HAL_StatusTypeDef TLC59116_WriteReg(uint8_t addr7, uint8_t reg, uint8_t value)
 {
@@ -80,6 +97,8 @@ HAL_StatusTypeDef TLC59116_InitPwmMode(uint8_t addr7)
 
 void TLC59116_Init(void)
 {
+  TLC59116_1_Reset();
+  TLC59116_2_Reset();
   TLC59116_InitPwmMode(TLC59116_ADDR_1_W);
   TLC59116_InitPwmMode(TLC59116_ADDR_2_W);
 }

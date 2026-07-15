@@ -25,10 +25,25 @@
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
 #include "i2c.h"
 
-/* USER CODE BEGIN Prototypes */
+/**
+ * @brief 重置第1个TLC59116芯片
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-14
+ */
+void TLC59116_1_Reset(void);
+
+/**
+ * @brief 重置第2个TLC59116芯片
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-14
+ */
+void TLC59116_2_Reset(void);
 
 /**
  * @brief 写入指定寄存器
@@ -141,8 +156,6 @@ HAL_StatusTypeDef TLC59116_2_SetPwm(uint8_t channel, uint8_t pwm);
  * @date    2026-06-11
  */
 HAL_StatusTypeDef TLC59116_SetAllPwm(uint8_t addr7, uint8_t pwm);
-
-/* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
