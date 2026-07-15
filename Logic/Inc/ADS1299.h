@@ -25,16 +25,15 @@
 extern "C" {
 #endif
 
-#include "gpio.h"
-#include "spi.h"
+#include <stdint.h>
 
-/** ADS1299芯片最大通道数 */
+/* ADS1299芯片最大通道数 */
 #define ADS1299_MAX_CHANNEL 8U
 
-/** ADS1299芯片数量 */
+/* ADS1299芯片数量 */
 #define ADS1299_COUNT 2U
 
-/** ADS1299数据大小 */
+/* ADS1299数据大小 */
 #define ADS1299_DATA_SIZE 27U
 
 /* ADS1299发送缓冲区 */
@@ -92,8 +91,6 @@ void ADS1299_1_CS_High(void);
 /**
  * @brief   将第2个ADS1299芯片的CS引脚拉低，使能此芯片的SPI通信
  *
- * 第2个ADS1299芯片的CS引脚连接到PD7
- *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-06-08
@@ -102,8 +99,6 @@ void ADS1299_2_CS_Low(void);
 
 /**
  * @brief   将第2个ADS1299芯片的CS引脚拉高，禁用此芯片的SPI通信
- *
- * 第2个ADS1299芯片的CS引脚连接到PD7
  *
  * @author  黄佳兴
  * @version 0.1
@@ -139,7 +134,7 @@ void ADS1299_Stop_ByCmd(void);
 void ADS1299_Start(void);
 
 /**
- * @brief 停止ADS1299芯片的采集，通过将START引脚拉高实现
+ * @brief 停止ADS1299芯片的采集，通过将START引脚拉低实现
  *
  * @author  黄佳兴
  * @version 0.1
@@ -207,7 +202,7 @@ void ADS1299_2_Init(void);
 void ADS1299_1_Origin_Read(void);
 
 /**
- * @brief   将不开LED读取的数据定义为原点数据，读取第1个ADS1299芯片的原点数据
+ * @brief   将不开LED读取的数据定义为原点数据，读取第2个ADS1299芯片的原点数据
  *
  * @author  黄佳兴
  * @version 0.1

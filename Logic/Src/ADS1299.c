@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 
 #include "ADS1299.h"
+#include "gpio.h"
+#include "spi.h"
 #include "Utils.h"
 
 /* System Commands */
@@ -49,7 +51,7 @@ int32_t ads_2_origin[ADS1299_MAX_CHANNEL];
 
 void ADS1299_1_Reset(void)
 {
-  /// TODO: 延时时间待确认
+  /** TODO: 延时时间待确认 */
   HAL_GPIO_WritePin(ADS1299_1_RESET_GPIO_Port, ADS1299_1_RESET_Pin, GPIO_PIN_RESET);
   HAL_Delay(1);
   HAL_GPIO_WritePin(ADS1299_1_RESET_GPIO_Port, ADS1299_1_RESET_Pin, GPIO_PIN_SET);
@@ -58,7 +60,7 @@ void ADS1299_1_Reset(void)
 
 void ADS1299_2_Reset(void)
 {
-  /// TODO: 延时时间待确认
+  /** TODO: 延时时间待确认 */
   HAL_GPIO_WritePin(ADS1299_2_RESET_GPIO_Port, ADS1299_2_RESET_Pin, GPIO_PIN_RESET);
   HAL_Delay(1);
   HAL_GPIO_WritePin(ADS1299_2_RESET_GPIO_Port, ADS1299_2_RESET_Pin, GPIO_PIN_SET);
@@ -107,16 +109,15 @@ void ADS1299_Stop(void)
 
 void ADS1299_SendCmd(uint8_t cmd)
 {
-  /// TODO: 超时时间待确认
+  /** TODO: 超时时间待确认 */
   HAL_SPI_Transmit(&hspi1, &cmd, 1U, HAL_MAX_DELAY);
 
-  /// TODO: 延时时间待确认
-  Delay_US(2);  // 等待SDECODE时间
+  /** TODO: 延时时间待确认 */
+  Delay_US(2);  /* 等待SDECODE时间 */
 }
 
 void ADS1299_WriteReg(uint8_t reg, uint8_t value)
 {
-  // 组装命令
   uint8_t tx[3];
   tx[0] = (uint8_t)(0x40U | (reg & 0x1FU));
   tx[1] = 0x00U;
@@ -137,28 +138,28 @@ uint8_t ADS1299_ReadReg(uint8_t reg)
 
 void ADS1299_1_Init(void)
 {
-  // 复位
+  /* 复位 */
   ADS1299_1_Reset();
 
-  // 等待POR时间
+  /* 等待POR时间 */
   HAL_Delay(200);
 
-  // 拉低CS
+  /* 拉低CS */
   ADS1299_1_CS_Low();
 
-  // 退出连续读模式
+  /* 退出连续读模式 */
   ADS1299_SendCmd(ADS1299_CMD_SDATAC);
 
-  // 配置寄存器
+  /* 配置寄存器 */
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
 
-  // 配置寄存器-16KSPS
+  /* 配置寄存器-16KSPS */
   ADS1299_WriteReg(ADS1299_REG_CONFIG1, 0xF0U);
 
-  // 配置寄存器
+  /* 配置寄存器 */
   ADS1299_WriteReg(ADS1299_REG_CONFIG2, 0xC0U);
 
-  // 配置寄存器-单次转换
+  /* 配置寄存器-单次转换 */
   ADS1299_WriteReg(ADS1299_REG_CONFIG4, 0x08U);
 
   for (uint8_t ch = 0; ch < 8; ch++)
@@ -175,16 +176,16 @@ void ADS1299_1_Init(void)
 
 void ADS1299_2_Init(void)
 {
-  // 复位
+  /* 复位 */
   ADS1299_2_Reset();
 
-  // 等待tPOR时间
+  /* 等待POR时间 */
   HAL_Delay(200);
 
-  // 拉低CS
+  /* 拉低CS */
   ADS1299_2_CS_Low();
 
-  // 退出连续读模式
+  /* 退出连续读模式 */
   ADS1299_SendCmd(ADS1299_CMD_SDATAC);
 
   ADS1299_WriteReg(ADS1299_REG_CONFIG3, 0xE0U);
@@ -209,17 +210,18 @@ void ADS1299_2_Init(void)
 
 void ADS1299_1_Origin_Read(void)
 {
+  /* 拉低CS */
   ADS1299_1_CS_Low();
 
-  // 开启采集
+  /* 开启采集 */
   ADS1299_Start();
 
-  // 等待PB0为低电平
-  while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != GPIO_PIN_RESET)
+  /* 等待DRDY引脚拉低 */
+  while (HAL_GPIO_ReadPin(ADS1299_1_DRDY_GPIO_Port, ADS1299_1_DRDY_Pin) != GPIO_PIN_RESET)
   {
   }
 
-  // 读取ADS12991数据寄存器
+  /* 读取ADS12991数据寄存器 */
   HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_1_origin_rx_buffer, 27, 100U);
 
   for (uint8_t i = 0; i < 8; i++)
@@ -227,9 +229,10 @@ void ADS1299_1_Origin_Read(void)
     ads_1_origin[i] =  Sign_Extend_24_to_32(&ads_1_origin_rx_buffer[3 + i * 3]);
   }
 
-  // 关闭采集
+  /* 关闭采集 */
   ADS1299_Stop();
 
+  /* 拉高CS */
   ADS1299_1_CS_High();
 }
 
