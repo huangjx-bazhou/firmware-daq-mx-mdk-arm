@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "fatfs.h"
 
@@ -53,72 +54,38 @@ extern volatile bool g_sd_card_detect_irq_pending;
 /** SD卡检测中断时间戳 */
 extern volatile uint32_t g_sd_card_detect_irq_tick;
 
-/**
- * @brief  检测SD卡
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-23
- */
-void SD_Detect(void);
+/** 检测SD卡 */
+bool SD_Detect(void);
 
-/**
- * @brief  挂载SD卡
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-16
- */
-void SD_Mount(void);
+/** 挂载SD卡 */
+bool SD_Mount(void);
 
-/**
- * @brief  打开文件
- * 
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-16
- */
-void SD_OpenFile(void);
+/** 打开文件 */
+bool SD_OpenFile(void);
 
-/**
- * @brief  关闭文件
- * 
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-16
- */
-void SD_CloseFile(void);
+/** 写入文件 */
+bool SD_WriteFile(const void* buff, UINT btw, UINT* bw);
 
-/**
- * @brief  写入文件
- * 
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-16
- */
-FRESULT SD_WriteFile(const void* buff, UINT btw, UINT* bw);
+/** 关闭文件 */
+bool SD_CloseFile(void);
+
+/** 卸载SD卡 */
+bool SD_DeMount(void);
 
 /**
  * @brief  获取SD卡剩余空间和总空间
  * 
  * @param[out]  free_bytes: 指向存储剩余空间的指针
  * @param[out]  total_bytes: 指向存储总空间的指针
- * @return FRESULT: 返回FRESULT类型的结果
  *
  * @author  黄佳兴
  * @version 0.1
  * @date    2026-07-22
  */
-FRESULT SD_GetSpace(uint64_t* free_bytes, uint64_t* total_bytes);
+void SD_GetSpace(uint64_t* free_bytes, uint64_t* total_bytes);
 
-/**
- * @brief  卸载SD卡
- *
- * @author  黄佳兴
- * @version 0.1
- * @date    2026-07-16
- */
-void SD_DeMount(void);
+/** 发送SD卡信息 */
+void SD_SendInfo(void);
 
 #ifdef __cplusplus
 }

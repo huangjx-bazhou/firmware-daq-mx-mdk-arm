@@ -50,6 +50,8 @@ static uint8_t gy95t_received = 0U;
 
 void GY95T_Init(void)
 {
+  GY95T_Stop();
+
   RB_Init(&g_gy95t_rb);
 }
 

@@ -176,12 +176,6 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
-#ifdef DEBUG_MODE
-  g_test_packet[0] = 0x84;
-  g_test_packet[1] = 0x6F;
-  g_test_packet[2] = 0x0B;
-#endif
-
   // 初始化数据包，提前设置头字节为846F0B
   for (uint8_t i = 0; i < PACKET_COUNT; ++i)
   {
@@ -190,34 +184,9 @@ int main(void)
     g_packet[i][2] = 0x0B;
     g_packet[i][3] = 0x00;
   }
-  
+
   SD_Mount();
 
-  /* H7系列无__HAL_SD_DISABLE宏：等待卡空闲后直接切换分频 */
-  // {
-  //   uint32_t tickstart = HAL_GetTick();
-  //   while ((HAL_SD_GetCardState(&hsd1) != HAL_SD_CARD_TRANSFER) && ((HAL_GetTick() - tickstart) < 100U))
-  //   {
-  //   }
-
-  //   MODIFY_REG(hsd1.Instance->CLKCR, SDMMC_CLKCR_CLKDIV, SDMMC_TRANSFER_CLKDIV);
-  //   hsd1.Init.ClockDiv = SDMMC_TRANSFER_CLKDIV;
-  // }
-
-  // 清理HAL_SD_Init阶段可能产生的UART3错误标志和残留数据
-  __HAL_UART_CLEAR_OREFLAG(&huart2);
-  __HAL_UART_CLEAR_NEFLAG(&huart2);
-  __HAL_UART_CLEAR_FEFLAG(&huart2);
-  __HAL_UART_CLEAR_PEFLAG(&huart2);
-  __HAL_UART_SEND_REQ(&huart2, UART_RXDATA_FLUSH_REQUEST);
-
-  // 清理HAL_SD_Init阶段可能产生的UART3错误标志和残留数据
-  __HAL_UART_CLEAR_OREFLAG(&huart3);
-  __HAL_UART_CLEAR_NEFLAG(&huart3);
-  __HAL_UART_CLEAR_FEFLAG(&huart3);
-  __HAL_UART_CLEAR_PEFLAG(&huart3);
-  __HAL_UART_SEND_REQ(&huart3, UART_RXDATA_FLUSH_REQUEST);
-  
   // 初始化USART2接收中断
   HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
 
@@ -227,15 +196,11 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
 
   HAL_TIM_Base_Start_IT(&htim7);
-  
+
   DWT_Init();
-  
-  //SD_Mount();
 
   /* 初始化GY95T */
   GY95T_Init();
-  
-  GY95T_Stop();
 
   /* 初始化WIFI */
   WIFI_Init();
@@ -271,6 +236,7 @@ int main(void)
           {
             // 检测到卡插入了
             MX_SDMMC1_SD_Init();
+
             SD_Mount();
           }
           else
@@ -280,10 +246,12 @@ int main(void)
             g_sd_card_mounted = false;
             g_file_opened = false;
           }
+
+          SD_SendInfo();
         }
       }
     }
-    
+
     if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
     {
       HAL_Delay(1400);
@@ -293,7 +261,7 @@ int main(void)
         HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_RESET);
       }
     }
-      
+
     /* 1. 处理WIFI串口数据 */
     if (RB_Available(&g_wifi_rb) > 0)
     {
@@ -307,22 +275,7 @@ int main(void)
     {
       g_send_sd_info_flag = false;
 
-      uint64_t free_bytes;   /*  剩余空间(字节) */
-      uint64_t total_bytes;  /*  总空间(字节)   */
-
-      /* SD卡信息缓存区 */
-      uint8_t sd_info[450];
-      memset(sd_info, 0, sizeof(sd_info));
-      sd_info[0] = 0x84;
-      sd_info[1] = 0x6F;
-      sd_info[2] = 0x0B;
-      sd_info[3] = 0x01;
-
-      /* 获取剩余空间和总空间，获取成功才发送到上位机，获取失败发送到上位机的是0 */
-      SD_GetSpace(&free_bytes, &total_bytes);
-      memcpy(sd_info + 4, &free_bytes, sizeof(free_bytes));
-      memcpy(sd_info + 4 + sizeof(free_bytes), &total_bytes, sizeof(total_bytes));
-      HAL_UART_Transmit(&huart3, sd_info, sizeof(sd_info), 100);
+      SD_SendInfo();
     }
 
     /* 2. 处理GY95T串口数据 */
@@ -372,8 +325,8 @@ int main(void)
       }
       else
       {
-        
-        
+
+
         /* 当停止采样时，停止GY95T的连续输出 */
         GY95T_Stop();
 
@@ -391,7 +344,7 @@ int main(void)
       /* 下一个要发送的数据包索引 */
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
-      
+
       SD_OpenFile();
       UINT bw = 0U;
       FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
@@ -471,7 +424,7 @@ int main(void)
 
           ADS1299_1_CS_High();
 
-          uint32_t ads1299_1_process_data_start = DWT->CYCCNT; 
+          uint32_t ads1299_1_process_data_start = DWT->CYCCNT;
 
           for (uint8_t i = 0; i < 8; i++)
           {
@@ -482,8 +435,8 @@ int main(void)
               g_ads_data[g_ads_data_count++] = value - ads_1_origin[i];
             }
           }
-          
-          uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
+
+          uint32_t ads1299_1_process_data_end = DWT->CYCCNT;
         }
 
         uint32_t ads2_channel_start = DWT->CYCCNT;
@@ -491,27 +444,27 @@ int main(void)
         // led与ads2建立了通道
         if (ads2 != 0)
         {
-  
+
           uint32_t ads1299_2_wait_drdy_start = DWT->CYCCNT;
 
           // 等待DRDY引脚为低电平
           while (HAL_GPIO_ReadPin(ADS1299_2_DRDY_GPIO_Port, ADS1299_2_DRDY_Pin) != GPIO_PIN_RESET)
           {
           }
-          
+
           uint32_t ads1299_2_read_data_start = DWT->CYCCNT;
 
           ADS1299_2_CS_Low();
 
           // 读取ADS12992数据寄存器
           HAL_SPI_TransmitReceive(&hspi1, ads_tx_buffer, ads_2_rx_buffer, 27, 100U);
-          
+
           uint32_t ads1299_2_stop_start = DWT->CYCCNT;
-  
+
           uint32_t ads1299_2_cs_high_start = DWT->CYCCNT;
 
           ADS1299_2_CS_High();
-          
+
           uint32_t ads1299_2_process_data_start = DWT->CYCCNT;
 
           for (uint8_t i = 0; i < 8; i++)
@@ -523,7 +476,7 @@ int main(void)
               g_ads_data[g_ads_data_count++] = value - ads_2_origin[i];
             }
           }
-          
+
           uint32_t ads1299_2_process_data_end = DWT->CYCCNT;
         }
 
@@ -614,7 +567,7 @@ int main(void)
 
           ADS1299_1_CS_High();
 
-          uint32_t ads1299_1_process_data_start = DWT->CYCCNT; 
+          uint32_t ads1299_1_process_data_start = DWT->CYCCNT;
 
           for (uint8_t i = 0; i < 8; i++)
           {
@@ -626,7 +579,7 @@ int main(void)
             }
           }
 
-          uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
+          uint32_t ads1299_1_process_data_end = DWT->CYCCNT;
         }
 
         uint32_t ads2_channel_start = DWT->CYCCNT;

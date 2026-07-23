@@ -22,6 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "SD.h"
+#include "usart.h"
 /* USER CODE END 0 */
 
 SD_HandleTypeDef hsd1;
@@ -67,6 +68,21 @@ void MX_SDMMC1_SD_Init(void)
   /* USER CODE BEGIN SDMMC1_Init 2 */
   // 取消标记
   g_sd_card_initializing = false;
+
+  // 清理HAL_SD_Init阶段可能产生的UART2错误标志和残留数据
+  __HAL_UART_CLEAR_OREFLAG(&huart2);
+  __HAL_UART_CLEAR_NEFLAG(&huart2);
+  __HAL_UART_CLEAR_FEFLAG(&huart2);
+  __HAL_UART_CLEAR_PEFLAG(&huart2);
+  __HAL_UART_SEND_REQ(&huart2, UART_RXDATA_FLUSH_REQUEST);
+
+  // 清理HAL_SD_Init阶段可能产生的UART3错误标志和残留数据
+  __HAL_UART_CLEAR_OREFLAG(&huart3);
+  __HAL_UART_CLEAR_NEFLAG(&huart3);
+  __HAL_UART_CLEAR_FEFLAG(&huart3);
+  __HAL_UART_CLEAR_PEFLAG(&huart3);
+  __HAL_UART_SEND_REQ(&huart3, UART_RXDATA_FLUSH_REQUEST);
+
   /* USER CODE END SDMMC1_Init 2 */
 
 }
