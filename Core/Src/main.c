@@ -20,7 +20,9 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
+#include "rtc.h"
 #include "sdmmc.h"
 #include "spi.h"
 #include "tim.h"
@@ -36,6 +38,7 @@
 #include "E101-C5WN8-PS.h"
 #include "GY-95T.h"
 #include "RingBuffer.h"
+#include "SD.h"
 #include "TLC59116.h"
 #include "Utils.h"
 
@@ -127,6 +130,14 @@ static volatile uint32_t g_cost22_stop_ads1299 = 0U;       // 停止ADS1299耗�
 static volatile uint32_t g_cost22_cs_high = 0U;            // 拉高CS耗时
 static volatile uint32_t g_cost22_process_data = 0U;       // 处理数据耗时
 
+
+static volatile uint32_t g_cost_openfile = 0U;
+
+static volatile uint32_t g_cost_closefile = 0U;
+
+static volatile uint32_t g_cost_writefile = 0U;
+
+
 // USART3 DMA发送是否过慢
 static volatile uint32_t g_usart3_dma_tx_is_slow = 0U;
 
@@ -140,6 +151,9 @@ static volatile bool g_tim6_ready = false;
 
 // USART3发送忙标志
 static volatile bool g_usart3_tx_busy = false;
+
+// SD卡正在写入
+static volatile bool g_sd_write_busy = false;
 
 // 定时器6中断计数
 static uint16_t g_tim6_ready_count = 0U;
@@ -166,6 +180,9 @@ static int8_t g_new_packet_index = -1;
 
 // 正在发送数据包索引
 static int8_t g_tx_packet_index = -1;
+
+// SD卡正在写入的数据包索引
+static int8_t g_sd_packet_index = -1;
 
 static uint16_t g_tx_ads_data_count = 0U;
 
@@ -238,6 +255,8 @@ int main(void)
   MX_TIM7_Init();
   MX_USART2_UART_Init();
   MX_SDMMC1_SD_Init();
+  MX_FATFS_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
 #ifdef DEBUG_MODE
@@ -252,19 +271,38 @@ int main(void)
     g_packet[i][0] = 0x84;
     g_packet[i][1] = 0x6F;
     g_packet[i][2] = 0x0B;
+    g_packet[i][3] = 0x00;
   }
+	
+	SD_Mount();
 
-  DWT_Init();
+  /* H7系列无__HAL_SD_DISABLE宏：等待卡空闲后直接切换分频 */
+  // {
+  //   uint32_t tickstart = HAL_GetTick();
+  //   while ((HAL_SD_GetCardState(&hsd1) != HAL_SD_CARD_TRANSFER) && ((HAL_GetTick() - tickstart) < 100U))
+  //   {
+  //   }
 
-  // 初始化USART2接收中断
-  HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
-  
+  //   MODIFY_REG(hsd1.Instance->CLKCR, SDMMC_CLKCR_CLKDIV, SDMMC_TRANSFER_CLKDIV);
+  //   hsd1.Init.ClockDiv = SDMMC_TRANSFER_CLKDIV;
+  // }
+
+  // 清理HAL_SD_Init阶段可能产生的UART3错误标志和残留数据
+  __HAL_UART_CLEAR_OREFLAG(&huart2);
+  __HAL_UART_CLEAR_NEFLAG(&huart2);
+  __HAL_UART_CLEAR_FEFLAG(&huart2);
+  __HAL_UART_CLEAR_PEFLAG(&huart2);
+  __HAL_UART_SEND_REQ(&huart2, UART_RXDATA_FLUSH_REQUEST);
+
   // 清理HAL_SD_Init阶段可能产生的UART3错误标志和残留数据
   __HAL_UART_CLEAR_OREFLAG(&huart3);
   __HAL_UART_CLEAR_NEFLAG(&huart3);
   __HAL_UART_CLEAR_FEFLAG(&huart3);
   __HAL_UART_CLEAR_PEFLAG(&huart3);
   __HAL_UART_SEND_REQ(&huart3, UART_RXDATA_FLUSH_REQUEST);
+	
+	// 初始化USART2接收中断
+  HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
 
   // 初始化USART3接收中断
   HAL_UART_Receive_IT(&huart3, &g_wifi_usart3_rx_byte, 1U);
@@ -272,9 +310,15 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
 
   HAL_TIM_Base_Start_IT(&htim7);
+	
+	DWT_Init();
+	
+	//SD_Mount();
 
   /* 初始化GY95T */
   GY95T_Init();
+	
+	GY95T_Stop();
 
   /* 初始化WIFI */
   WIFI_Init();
@@ -294,12 +338,48 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		
+		if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
+    {
+      HAL_Delay(1400);
+      if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
+      {
+				SD_CloseFile();
+        HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_RESET);
+      }
+    }
+			
     /* 1. 处理WIFI串口数据 */
     if (RB_Available(&g_wifi_rb) > 0)
     {
       uint8_t byte;
       RB_ReadByte(&g_wifi_rb, &byte);
       WIFI_AssembleCommand(byte);
+    }
+
+    /* 处理是否发送SD卡信息标志 */
+    if (g_send_sd_info_flag)
+    {
+      g_send_sd_info_flag = false;
+
+      uint64_t free_bytes, total_bytes;
+      FRESULT res;
+
+      res = SD_GetSpace(&free_bytes, &total_bytes);
+
+      if (FR_OK == res)
+      {
+        uint8_t sd_info[450];
+        memset(sd_info, 0, sizeof(sd_info));
+        sd_info[0] = 0x84;
+        sd_info[1] = 0x6F;
+        sd_info[2] = 0x0B;
+        sd_info[3] = 0x01;
+        memcpy(sd_info + 4, &free_bytes, sizeof(free_bytes));
+        memcpy(sd_info + 4 + sizeof(free_bytes), &total_bytes, sizeof(total_bytes));
+
+        HAL_UART_Transmit(&huart3, sd_info, sizeof(sd_info), 100);
+      }
     }
 
     /* 2. 处理GY95T串口数据 */
@@ -340,18 +420,18 @@ int main(void)
     {
       g_start_flag_changed = false;
 
+      /* 采样 */
       if (g_start_flag)
       {
-        /* 当开始采样时，读取一次没有开LED时的原始数据 */
-        //ADS1299_1_Origin_Read();
-        //ADS1299_2_Origin_Read();
-
+        /* 开始GY95T的连续输出 */
         GY95T_Start();
 
       }
       else
       {
-        /* 当停止采样时，停止GY95T */
+				
+				
+        /* 当停止采样时，停止GY95T的连续输出 */
         GY95T_Stop();
 
         g_packet_num = 0U;
@@ -369,8 +449,46 @@ int main(void)
       /* 下一个要发送的数据包索引 */
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
-      HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20);
+			
+			uint32_t now1 = DWT->CYCCNT;
+			
+     SD_OpenFile();
+
+     uint32_t now2 = DWT->CYCCNT;
+
+     UINT bw = 0U;
+     FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
+
+     uint32_t now3 = DWT->CYCCNT;
+
+			SD_CloseFile();
+
+			uint32_t now4 = DWT->CYCCNT;
+
+     g_cost_openfile = now2 - now1;
+     g_cost_writefile = now3 - now2;
+     g_cost_closefile = now4 - now3;
+
+
+      HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20);
     }
+
+    // /* 7. 处理SD卡写入忙标志 */
+    // if (!g_sd_write_busy && (g_sd_packet_index != g_new_packet_index))
+    // {
+    //   /* 设置为发送忙状态 */
+    //   g_sd_write_busy = true;
+
+    //   /* 下一个要写入的数据包索引 */
+    //   g_sd_packet_index = (g_sd_packet_index + 1) % PACKET_COUNT;
+
+    //   SD_OpenFile();
+    //   UINT bw = 0U;
+    //   FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20, &bw);
+    //   SD_CloseFile();
+
+    //   HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20);
+    // }
 
     /* 7. 处理定时器6中断 */
     if (g_tim6_ready && g_start_flag)
@@ -744,23 +862,23 @@ int main(void)
       }
 
       // 数据个数
-      memcpy(g_packet[g_new_packet_index] + 3, &g_ads_data_count, sizeof(g_ads_data_count));
+      memcpy(g_packet[g_new_packet_index] + 4, &g_ads_data_count, sizeof(g_ads_data_count));
 
       // 数据包序号
-      memcpy(g_packet[g_new_packet_index] + 5, &g_packet_num, sizeof(g_packet_num));
+      memcpy(g_packet[g_new_packet_index] + 6, &g_packet_num, sizeof(g_packet_num));
 
       // 时间戳
-      memcpy(g_packet[g_new_packet_index] + 9, (const void *)&g_timestamp, sizeof(g_timestamp));
+      memcpy(g_packet[g_new_packet_index] + 10, (const void *)&g_timestamp, sizeof(g_timestamp));
 
       // 复制数据
-      memcpy(g_packet[g_new_packet_index] + 13, &g_ads_data, 4 * g_ads_data_count);
+      memcpy(g_packet[g_new_packet_index] + 14, &g_ads_data, 4 * g_ads_data_count);
 
       /* GY95T数据 */
-      memcpy(g_packet[g_new_packet_index] + 13 + 4 * g_ads_data_count, g_gy95t_data, GY95T_DATA_SIZE);
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count, g_gy95t_data, GY95T_DATA_SIZE);
 
-      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = Get_Battery_Level();
+      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = Get_Battery_Level();
 
-      g_packet[g_new_packet_index][13 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
+      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
@@ -796,11 +914,17 @@ void SystemClock_Config(void)
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 2;

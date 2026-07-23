@@ -21,7 +21,7 @@
 #include "E101-C5WN8-PS.h"
 #include <string.h>
 
-#define CMD_PACKET_SIZE 59U
+#define CMD_PACKET_SIZE 60U
 #define CMD_ENABLE_FLAG 0x55
 #define CMD_DISABLE_FLAG 0xAA
 #define RECEIVED_NONE 0U
@@ -46,12 +46,16 @@ uint8_t g_led_brightness[LED_COUNT];
 uint8_t g_channel_mask[LED_COUNT * RECVIVER_COUNT / 8];
 bool g_power_flag_changed = false;
 bool g_power_flag = true;
+uint8_t g_power_cmd = CMD_DISABLE_FLAG;
 bool g_storage_flag_changed = false;
 bool g_storage_flag = false;
+uint8_t g_storage_cmd = CMD_DISABLE_FLAG;
 bool g_sample_rate_changed = false;
 uint8_t g_sample_rate = 50U;
 bool g_start_flag_changed = false;
 bool g_start_flag = false;
+uint8_t g_start_cmd = CMD_DISABLE_FLAG;
+bool g_send_sd_info_flag = false;
 
 void WIFI_Init(void)
 {
@@ -93,6 +97,7 @@ void WIFI_AssembleCommand(uint8_t byte)
       {
         WIFI_ParseCommand(wifi_cmd);
         wifi_received_state = RECEIVED_NONE;
+				wifi_received = 0;
       }
       break;
   }
@@ -116,16 +121,18 @@ void WIFI_ParseCommand(uint8_t* cmd)
   memcpy(g_channel_mask, cmd + 23U, LED_COUNT * RECVIVER_COUNT / 8);
 
   /* 开关机标志解析 */
-  if (cmd[55] != g_power_flag)
+  if (cmd[55] != g_power_cmd)
   {
-    g_power_flag = cmd[55];
+		g_power_cmd = cmd[55];
+    g_power_flag = (g_power_cmd == CMD_ENABLE_FLAG);
     g_power_flag_changed = true;
   }
 
   /* 离线存储标志解析 */
-  if (cmd[56] != g_storage_flag)
+  if (cmd[56] != g_storage_cmd)
   {
-    g_storage_flag = cmd[56];
+		g_storage_cmd = cmd[56];
+    g_storage_flag = (g_storage_cmd == CMD_ENABLE_FLAG);
     g_storage_flag_changed = true;
   }
 
@@ -137,9 +144,13 @@ void WIFI_ParseCommand(uint8_t* cmd)
   }
 
   /* 开始采样标志解析 */
-  if (cmd[58] != g_start_flag)
+  if (cmd[58] != g_start_cmd)
   {
-    g_start_flag = cmd[58];
+		g_start_cmd = cmd[58];
+    g_start_flag = (g_start_cmd == CMD_ENABLE_FLAG);
     g_start_flag_changed = true;
   }
+
+  /* 最后一位是0x01就返回存储卡信息 */
+  g_send_sd_info_flag = (CMD_ENABLE_FLAG == cmd[59]);
 }

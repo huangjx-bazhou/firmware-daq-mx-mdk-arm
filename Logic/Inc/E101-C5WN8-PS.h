@@ -74,6 +74,9 @@ extern bool g_start_flag_changed;
 /**  开始采样标志 */
 extern bool g_start_flag;
 
+/**  是否发送SD卡信息标志 */
+extern bool g_send_sd_info_flag;
+
 /**
  * @brief 初始化WIFI模块
  *
