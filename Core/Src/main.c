@@ -52,9 +52,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-// 调试模式, 开启后会添加测试变量
-#define DEBUG_MODE 
-
 #define CALIBRATE_FREQUENCY 15000U // 校准频率每15000次校准一次
 
 #define PACKET_SIZE 2048U // 数据包大小, 包括2字节头
@@ -73,91 +70,11 @@
 
 /* USER CODE BEGIN PV */
 
-/* 测试变量，用来测试耗时 ---------------------------------------------------------*/
-
-#ifdef DEBUG_MODE
-
-static volatile uint32_t g_dwt_now = 0U;                  // 当前dwt值
-
-static volatile uint32_t g_tim6_cost = 0U;                // TIM6耗时
-
-// TLC59116-1 
-static volatile uint32_t g_cost1_turn_on_led = 0U;        // 开LED耗时
-static volatile uint32_t g_cost1_turn_off_led = 0U;       // 关闭LED耗时
-
-// TLC59116-2
-static volatile uint32_t g_cost2_turn_on_led = 0U;        // 开LED耗时
-static volatile uint32_t g_cost2_turn_off_led = 0U;       // 关闭LED耗时
-
-// TLC59116-1 -> ADS1299-1
-static volatile uint32_t g_cost11_cs_low = 0U;             // 拉低CS耗时
-static volatile uint32_t g_cost11_start_ads1299 = 0U;      // 启动ADS1299耗时
-static volatile uint32_t g_cost11_wait_drdy = 0U;          // 等待DRDY耗时
-static volatile uint32_t g_cost11_read_data = 0U;          // 读取数据耗时
-static volatile uint32_t g_cost11_stop_ads1299 = 0U;       // 停止ADS1299耗时
-static volatile uint32_t g_cost11_cs_high = 0U;            // 拉高CS耗时
-static volatile uint32_t g_cost11_process_data = 0U;       // 处理数据耗时
-static volatile uint32_t g_cost11 = 0U;
-
-// TLC59116-1 -> ADS1299-2
-static volatile uint32_t g_cost12_turn_on_led = 0U;        // 开LED耗时
-static volatile uint32_t g_cost12_cs_low = 0U;             // 拉低CS耗时
-static volatile uint32_t g_cost12_start_ads1299 = 0U;      // 启动ADS1299耗时
-static volatile uint32_t g_cost12_wait_drdy = 0U;          // 等待DRDY耗时
-static volatile uint32_t g_cost12_read_data = 0U;          // 读取数据耗时
-static volatile uint32_t g_cost12_stop_ads1299 = 0U;       // 停止ADS1299耗时
-static volatile uint32_t g_cost12_cs_high = 0U;            // 拉高CS耗时
-static volatile uint32_t g_cost12_process_data = 0U;       // 处理数据耗时
-static volatile uint32_t g_cost12 = 0U;
-
-// TLC59116-2 -> ADS1299-1
-static volatile uint32_t g_cost21_turn_on_led = 0U;        // 开LED耗时
-static volatile uint32_t g_cost21_cs_low = 0U;             // 拉低CS耗时
-static volatile uint32_t g_cost21_start_ads1299 = 0U;      // 启动ADS1299耗时
-static volatile uint32_t g_cost21_wait_drdy = 0U;          // 等待DRDY耗时
-static volatile uint32_t g_cost21_read_data = 0U;          // 读取数据耗时
-static volatile uint32_t g_cost21_stop_ads1299 = 0U;       // 停止ADS1299耗时
-static volatile uint32_t g_cost21_cs_high = 0U;            // 拉高CS耗时
-static volatile uint32_t g_cost21_process_data = 0U;       // 处理数据耗时
-
-// TLC59116-2 -> ADS1299-2
-static volatile uint32_t g_cost22_turn_on_led = 0U;        // 开LED耗时
-static volatile uint32_t g_cost22_cs_low = 0U;             // 拉低CS耗时
-static volatile uint32_t g_cost22_start_ads1299 = 0U;      // 启动ADS1299耗时
-static volatile uint32_t g_cost22_wait_drdy = 0U;          // 等待DRDY耗时
-static volatile uint32_t g_cost22_read_data = 0U;          // 读取数据耗时
-static volatile uint32_t g_cost22_stop_ads1299 = 0U;       // 停止ADS1299耗时
-static volatile uint32_t g_cost22_cs_high = 0U;            // 拉高CS耗时
-static volatile uint32_t g_cost22_process_data = 0U;       // 处理数据耗时
-
-
-static volatile uint32_t g_cost_openfile = 0U;
-
-static volatile uint32_t g_cost_closefile = 0U;
-
-static volatile uint32_t g_cost_writefile = 0U;
-
-
-// USART3 DMA发送是否过慢
-static volatile uint32_t g_usart3_dma_tx_is_slow = 0U;
-
-// 测试数据包，固定值前三字节为846F0B，其余为0
-static uint8_t g_test_packet[512];
-
-#endif
-
 // TIM6中断标志
 static volatile bool g_tim6_ready = false;
 
 // USART3发送忙标志
 static volatile bool g_usart3_tx_busy = false;
-
-// SD卡正在写入
-static volatile bool g_sd_write_busy = false;
-
-// 定时器6中断计数
-static uint16_t g_tim6_ready_count = 0U;
-
 
 
 // ADS1299数据
@@ -273,8 +190,8 @@ int main(void)
     g_packet[i][2] = 0x0B;
     g_packet[i][3] = 0x00;
   }
-	
-	SD_Mount();
+  
+  SD_Mount();
 
   /* H7系列无__HAL_SD_DISABLE宏：等待卡空闲后直接切换分频 */
   // {
@@ -300,8 +217,8 @@ int main(void)
   __HAL_UART_CLEAR_FEFLAG(&huart3);
   __HAL_UART_CLEAR_PEFLAG(&huart3);
   __HAL_UART_SEND_REQ(&huart3, UART_RXDATA_FLUSH_REQUEST);
-	
-	// 初始化USART2接收中断
+  
+  // 初始化USART2接收中断
   HAL_UART_Receive_IT(&huart2, &g_gy95t_usart2_rx_byte, 1U);
 
   // 初始化USART3接收中断
@@ -310,15 +227,15 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
 
   HAL_TIM_Base_Start_IT(&htim7);
-	
-	DWT_Init();
-	
-	//SD_Mount();
+  
+  DWT_Init();
+  
+  //SD_Mount();
 
   /* 初始化GY95T */
   GY95T_Init();
-	
-	GY95T_Stop();
+  
+  GY95T_Stop();
 
   /* 初始化WIFI */
   WIFI_Init();
@@ -338,17 +255,45 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		
-		if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
+    /* SD卡检测去抖：中断只登记事件，在主循环中30ms后判稳 */
+    if (g_sd_card_detect_irq_pending)
+    {
+      if ((HAL_GetTick() - g_sd_card_detect_irq_tick) >= SD_CARD_DEBOUNCE_MS)
+      {
+        g_sd_card_detect_irq_pending = false;
+
+        bool old_detected = g_sd_card_detected;
+        SD_Detect();
+
+        if (old_detected != g_sd_card_detected)
+        {
+          if (g_sd_card_detected)
+          {
+            // 检测到卡插入了
+            MX_SDMMC1_SD_Init();
+            SD_Mount();
+          }
+          else
+          {
+            // 检测到卡拔出了
+            g_sd_card_initialized = false;
+            g_sd_card_mounted = false;
+            g_file_opened = false;
+          }
+        }
+      }
+    }
+    
+    if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
     {
       HAL_Delay(1400);
       if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
       {
-				SD_CloseFile();
+        SD_CloseFile();
         HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_RESET);
       }
     }
-			
+      
     /* 1. 处理WIFI串口数据 */
     if (RB_Available(&g_wifi_rb) > 0)
     {
@@ -357,29 +302,27 @@ int main(void)
       WIFI_AssembleCommand(byte);
     }
 
-    /* 处理是否发送SD卡信息标志 */
+    /* 2. 处理是否发送SD卡信息标志 */
     if (g_send_sd_info_flag)
     {
       g_send_sd_info_flag = false;
 
-      uint64_t free_bytes, total_bytes;
-      FRESULT res;
+      uint64_t free_bytes;   /*  剩余空间(字节) */
+      uint64_t total_bytes;  /*  总空间(字节)   */
 
-      res = SD_GetSpace(&free_bytes, &total_bytes);
+      /* SD卡信息缓存区 */
+      uint8_t sd_info[450];
+      memset(sd_info, 0, sizeof(sd_info));
+      sd_info[0] = 0x84;
+      sd_info[1] = 0x6F;
+      sd_info[2] = 0x0B;
+      sd_info[3] = 0x01;
 
-      if (FR_OK == res)
-      {
-        uint8_t sd_info[450];
-        memset(sd_info, 0, sizeof(sd_info));
-        sd_info[0] = 0x84;
-        sd_info[1] = 0x6F;
-        sd_info[2] = 0x0B;
-        sd_info[3] = 0x01;
-        memcpy(sd_info + 4, &free_bytes, sizeof(free_bytes));
-        memcpy(sd_info + 4 + sizeof(free_bytes), &total_bytes, sizeof(total_bytes));
-
-        HAL_UART_Transmit(&huart3, sd_info, sizeof(sd_info), 100);
-      }
+      /* 获取剩余空间和总空间，获取成功才发送到上位机，获取失败发送到上位机的是0 */
+      SD_GetSpace(&free_bytes, &total_bytes);
+      memcpy(sd_info + 4, &free_bytes, sizeof(free_bytes));
+      memcpy(sd_info + 4 + sizeof(free_bytes), &total_bytes, sizeof(total_bytes));
+      HAL_UART_Transmit(&huart3, sd_info, sizeof(sd_info), 100);
     }
 
     /* 2. 处理GY95T串口数据 */
@@ -429,13 +372,12 @@ int main(void)
       }
       else
       {
-				
-				
+        
+        
         /* 当停止采样时，停止GY95T的连续输出 */
         GY95T_Stop();
 
         g_packet_num = 0U;
-        g_tim6_ready_count = 0U;
         g_timestamp = 0U;
       }
     }
@@ -449,61 +391,22 @@ int main(void)
       /* 下一个要发送的数据包索引 */
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
-			
-			uint32_t now1 = DWT->CYCCNT;
-			
-     SD_OpenFile();
-
-     uint32_t now2 = DWT->CYCCNT;
-
-     UINT bw = 0U;
-     FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
-
-     uint32_t now3 = DWT->CYCCNT;
-
-			SD_CloseFile();
-
-			uint32_t now4 = DWT->CYCCNT;
-
-     g_cost_openfile = now2 - now1;
-     g_cost_writefile = now3 - now2;
-     g_cost_closefile = now4 - now3;
-
+      
+      SD_OpenFile();
+      UINT bw = 0U;
+      FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
+      SD_CloseFile();
 
       HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20);
     }
-
-    // /* 7. 处理SD卡写入忙标志 */
-    // if (!g_sd_write_busy && (g_sd_packet_index != g_new_packet_index))
-    // {
-    //   /* 设置为发送忙状态 */
-    //   g_sd_write_busy = true;
-
-    //   /* 下一个要写入的数据包索引 */
-    //   g_sd_packet_index = (g_sd_packet_index + 1) % PACKET_COUNT;
-
-    //   SD_OpenFile();
-    //   UINT bw = 0U;
-    //   FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20, &bw);
-    //   SD_CloseFile();
-
-    //   HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 13 + g_tx_ads_data_count * 4 + 20);
-    // }
 
     /* 7. 处理定时器6中断 */
     if (g_tim6_ready && g_start_flag)
     {
       g_tim6_ready = false;
-      g_tim6_ready_count++;
+
 
       uint32_t tim6_start = DWT->CYCCNT;
-
-      if (g_tim6_ready_count >= CALIBRATE_FREQUENCY)
-      {
-        g_tim6_ready_count = 0;
-        //ADS1299_1_Origin_Read();
-        //ADS1299_2_Origin_Read();
-      }
 
       /* 循环开启TLC59116-1的16个通道 */
       for (uint8_t ch = 0; ch < LED_COUNT; ch++)
@@ -581,15 +484,6 @@ int main(void)
           }
           
           uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
-
-          // 测试耗时代码
-          //g_cost11_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
-          //g_cost11_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
-          g_cost11_wait_drdy = ads1299_1_read_data_start - ads1299_1_wait_drdy_start;
-          g_cost11_read_data = ads1299_1_stop_start - ads1299_1_read_data_start;
-          g_cost11_stop_ads1299 = ads1299_1_cs_high_start - ads1299_1_stop_start;
-          g_cost11_cs_high = ads1299_1_process_data_start - ads1299_1_cs_high_start;
-          g_cost11_process_data = ads1299_1_process_data_end - ads1299_1_process_data_start;
         }
 
         uint32_t ads2_channel_start = DWT->CYCCNT;
@@ -631,15 +525,6 @@ int main(void)
           }
           
           uint32_t ads1299_2_process_data_end = DWT->CYCCNT;
-
-          // 测试耗时代码
-          //g_cost12_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
-          //g_cost12_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
-          g_cost12_wait_drdy = ads1299_2_read_data_start - ads1299_2_wait_drdy_start;
-          g_cost12_read_data = ads1299_2_stop_start - ads1299_2_read_data_start;
-          g_cost12_stop_ads1299 = ads1299_2_cs_high_start - ads1299_2_stop_start;
-          g_cost12_cs_high = ads1299_2_process_data_start - ads1299_2_cs_high_start;
-          g_cost12_process_data = ads1299_2_process_data_end - ads1299_2_process_data_start;
         }
 
         if (ads1 != 0)
@@ -662,12 +547,6 @@ int main(void)
         TLC59116_1_SetPwm(ch, 0);
 
         uint32_t turn_off_led_end = DWT->CYCCNT;
-
-        // 测试耗时
-        g_cost1_turn_on_led = ads1_channel_start - turn_on_led_start;
-        g_cost11 = ads2_channel_start - ads1_channel_start;
-        g_cost12 = turn_off_led_start - ads2_channel_start;
-        g_cost1_turn_off_led = turn_off_led_end - turn_off_led_start;
       }
 
       // 循环开启TLC59116-2的16个通道
@@ -748,15 +627,6 @@ int main(void)
           }
 
           uint32_t ads1299_1_process_data_end = DWT->CYCCNT; 
-
-          // 测试耗时代码
-          //g_cost21_cs_low = ads1299_1_start_start - ads1299_1_cs_low_start;
-          //g_cost21_start_ads1299 = ads1299_1_wait_drdy_start - ads1299_1_start_start;
-          g_cost21_wait_drdy = ads1299_1_read_data_start - ads1299_1_wait_drdy_start;
-          g_cost21_read_data = ads1299_1_stop_start - ads1299_1_read_data_start;
-          g_cost21_stop_ads1299 = ads1299_1_cs_high_start - ads1299_1_stop_start;
-          g_cost21_cs_high = ads1299_1_process_data_start - ads1299_1_cs_high_start;
-          g_cost21_process_data = ads1299_1_process_data_end - ads1299_1_process_data_start;
         }
 
         uint32_t ads2_channel_start = DWT->CYCCNT;
@@ -797,15 +667,6 @@ int main(void)
           }
 
           uint32_t ads1299_2_process_data_end = DWT->CYCCNT;
-
-          // 测试耗时代码
-          //g_cost22_cs_low = ads1299_2_start_start - ads1299_2_cs_low_start;
-          //g_cost22_start_ads1299 = ads1299_2_wait_drdy_start - ads1299_2_start_start;
-          g_cost22_wait_drdy = ads1299_2_read_data_start - ads1299_2_wait_drdy_start;
-          g_cost22_read_data = ads1299_2_stop_start - ads1299_2_read_data_start;
-          g_cost22_stop_ads1299 = ads1299_2_cs_high_start - ads1299_2_stop_start;
-          g_cost22_cs_high = ads1299_2_process_data_start - ads1299_2_cs_high_start;
-          g_cost22_process_data = ads1299_2_process_data_end - ads1299_2_process_data_start;
         }
 
 
@@ -826,22 +687,14 @@ int main(void)
         uint32_t turn_off_led_start = DWT->CYCCNT;
 
 
-
         // 关闭LED
         TLC59116_2_SetPwm(ch, 0);
 
         uint32_t turn_off_led_end = DWT->CYCCNT;
 
-        // 测试耗时
-        g_cost2_turn_on_led = ads1_channel_start - turn_on_led_start;
-        //g_cost21 = ads2_channel_start - ads1_channel_start;
-        //g_cost22 = turn_off_led_start - ads2_channel_start;
-        g_cost2_turn_off_led = turn_off_led_end - turn_off_led_start;
       }
 
       g_sample_idx++;
-
-      g_tim6_cost = DWT->CYCCNT - tim6_start;
     }
 
     // 采样次数大于指定次数就发送
@@ -853,11 +706,9 @@ int main(void)
       int8_t new_packet_index = (g_new_packet_index + 1) % PACKET_COUNT;;
       if (new_packet_index == g_tx_packet_index)
       {
-        g_usart3_dma_tx_is_slow = 1;
       }
       else
       {
-        g_usart3_dma_tx_is_slow = 0;
         g_new_packet_index = new_packet_index;
       }
 
@@ -1030,6 +881,16 @@ void configure_tim6_for_sample_rate(uint32_t rate, uint16_t* new_psc, uint16_t* 
   }
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (Card_Detect_Pin == GPIO_Pin)
+  {
+    // 双边沿触发下仅记录事件，实际状态在主循环中去抖判稳
+    g_sd_card_detect_irq_tick = HAL_GetTick();
+    g_sd_card_detect_irq_pending = true;
+  }
+}
+
 /**
  * @brief   USART的接收完成回调
  * @param   huart  UART句柄
@@ -1116,6 +977,12 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  if (true == g_sd_card_initializing)
+  {
+    g_sd_card_initialized = false;
+    return;
+  }
+
   __disable_irq();
   while (1)
   {

@@ -21,7 +21,7 @@
 #include "sdmmc.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "SD.h"
 /* USER CODE END 0 */
 
 SD_HandleTypeDef hsd1;
@@ -32,10 +32,26 @@ void MX_SDMMC1_SD_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC1_Init 0 */
-  HAL_Delay(100);
+  
   /* USER CODE END SDMMC1_Init 0 */
 
   /* USER CODE BEGIN SDMMC1_Init 1 */
+
+  // 检测SD卡是否插入，如果未插入，直接返回
+	SD_Detect();
+	
+  if (!g_sd_card_detected)
+  {
+    // SD卡未插入，直接返回
+    return;
+  }
+
+  HAL_Delay(100);
+
+  // 标记一下，SD卡正在初始化，在Error_Handler中检测这个标志，如果是因为SD卡初始化失败导致的错误，
+  // 就不执行原有的错误处理逻辑，而是直接返回，避免死循环
+  g_sd_card_initializing = true;
+  g_sd_card_initialized = true;
 
   /* USER CODE END SDMMC1_Init 1 */
   hsd1.Instance = SDMMC1;
@@ -49,7 +65,8 @@ void MX_SDMMC1_SD_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SDMMC1_Init 2 */
-
+  // 取消标记
+  g_sd_card_initializing = false;
   /* USER CODE END SDMMC1_Init 2 */
 
 }

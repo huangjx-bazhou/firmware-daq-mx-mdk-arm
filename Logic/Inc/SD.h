@@ -25,7 +25,42 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 #include "fatfs.h"
+
+/** SD卡检测去抖时间（ms） */
+#define SD_CARD_DEBOUNCE_MS 30U
+
+/** SD卡是否检测到 */
+extern bool g_sd_card_detected;
+
+/** SD卡是否正在初始化 */
+extern bool g_sd_card_initializing;
+
+/** SD卡是否初始化 */
+extern bool g_sd_card_initialized;
+
+/** SD卡是否挂载 */
+extern bool g_sd_card_mounted;
+
+/** SD卡文件是否打开 */
+extern bool g_file_opened;
+
+/** SD卡检测中断待处理标志 */
+extern volatile bool g_sd_card_detect_irq_pending;
+
+/** SD卡检测中断时间戳 */
+extern volatile uint32_t g_sd_card_detect_irq_tick;
+
+/**
+ * @brief  检测SD卡
+ *
+ * @author  黄佳兴
+ * @version 0.1
+ * @date    2026-07-23
+ */
+void SD_Detect(void);
 
 /**
  * @brief  挂载SD卡
@@ -43,7 +78,7 @@ void SD_Mount(void);
  * @version 0.1
  * @date    2026-07-16
  */
-FRESULT SD_OpenFile(void);
+void SD_OpenFile(void);
 
 /**
  * @brief  关闭文件
@@ -52,7 +87,7 @@ FRESULT SD_OpenFile(void);
  * @version 0.1
  * @date    2026-07-16
  */
-FRESULT SD_CloseFile(void);
+void SD_CloseFile(void);
 
 /**
  * @brief  写入文件

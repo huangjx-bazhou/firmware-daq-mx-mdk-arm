@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    SD.c
@@ -19,54 +19,50 @@
 
 #include "SD.h"
 
-#include <stdbool.h>
+
 
 FATFS fs;
 FIL file;
 
+// SD卡是否检测到
+bool g_sd_card_detected = false;
+
+// SD卡是否正在初始化
+bool g_sd_card_initializing = false;
+
+// SD卡是否初始化
+bool g_sd_card_initialized = false;
+
+// SD卡是否挂载
+bool g_sd_card_mounted = false;
+
+// SD卡文件是否打开
 bool g_file_opened = false;
+
+// SD卡检测中断待处理标志
+volatile bool g_sd_card_detect_irq_pending = false;
+
+// SD卡检测中断时间戳
+volatile uint32_t g_sd_card_detect_irq_tick = 0U;
+
+void SD_Detect(void)
+{
+  g_sd_card_detected = GPIO_PIN_RESET == HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
+}
 
 void SD_Mount(void)
 {
-  FRESULT res = f_mount(&fs, "0:", 1);
-
-  if (FR_NO_FILESYSTEM == res)
-  {
-    /* New/blank cards may not contain a valid FAT filesystem yet. */
-    static BYTE work[4096];
-    res = f_mkfs("0:", FM_FAT | FM_FAT32, 0, work, sizeof(work));
-    if (FR_OK == res)
-    {
-      res = f_mount(&fs, "0:", 1);
-    }
-  }
-
-  if (FR_OK != res)
-  {
-    Error_Handler();
-  }
+  g_sd_card_mounted = g_sd_card_detected ? (FR_OK == f_mount(&fs, "0:", 1)) : false;
 }
 
-FRESULT SD_OpenFile(void)
+void SD_OpenFile(void)
 {
-  FRESULT res;
-  res = f_open(&file, "0:data", FA_OPEN_ALWAYS | FA_WRITE);
-  if (FR_OK == res)
-  {
-    g_file_opened = true;
-  }
-  return res;
+  g_file_opened = g_sd_card_mounted ? (FR_OK == f_open(&file, "0:data", FA_OPEN_ALWAYS | FA_WRITE)) : false;
 }
 
-FRESULT SD_CloseFile(void)
+void SD_CloseFile(void)
 {
-  FRESULT res;
-  if (g_file_opened)
-  {
-    FRESULT res = f_close(&file);
-    g_file_opened = false;
-  } 
-  return res;
+  g_file_opened = g_file_opened ? (FR_OK == f_close(&file) ? false : true) : false;
 }
 
 FRESULT SD_WriteFile(const void* buff, UINT btw, UINT* bw)

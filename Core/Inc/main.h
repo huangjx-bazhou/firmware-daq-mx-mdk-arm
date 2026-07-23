@@ -59,6 +59,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define Card_Detect_Pin GPIO_PIN_2
 #define Card_Detect_GPIO_Port GPIOE
+#define Card_Detect_EXTI_IRQn EXTI2_IRQn
 #define Power_Pin GPIO_PIN_13
 #define Power_GPIO_Port GPIOC
 #define BatteryLevel_Pin GPIO_PIN_2
