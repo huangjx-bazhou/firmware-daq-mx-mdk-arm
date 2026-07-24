@@ -253,13 +253,30 @@ int main(void)
       }
     }
 
-    if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
     {
-      HAL_Delay(1400);
+      static uint32_t power_key_start_time = 0U;
+      static bool power_key_pressed = false;
+
       if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) == GPIO_PIN_SET)
       {
-        SD_CloseFile();
-        HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_RESET);
+        if (!power_key_pressed)
+        {
+          power_key_start_time = HAL_GetTick();
+          power_key_pressed = true;
+        }
+        else
+        {
+          if ((HAL_GetTick() - power_key_start_time) >= 1500U)
+          {
+            SD_CloseFile();
+            HAL_GPIO_WritePin(Power_GPIO_Port, Power_Pin, GPIO_PIN_RESET);
+            while (1) {}
+          }
+        }
+      }
+      else
+      {
+        power_key_pressed = false;
       }
     }
 
