@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    SD.c
@@ -20,6 +20,8 @@
 #include "SD.h"
 #include <string.h>
 #include <usart.h>
+
+#define SD_FILE_NAME_MAX_LEN 32U
 
 FATFS fs;
 FIL file;
@@ -45,6 +47,31 @@ volatile bool g_sd_card_detect_irq_pending = false;
 // SD卡检测中断时间戳
 volatile uint32_t g_sd_card_detect_irq_tick = 0U;
 
+/* 当前数据文件名，默认使用固定名 */
+static char g_sd_file_name[SD_FILE_NAME_MAX_LEN] = "0:data";
+
+#if (_USE_LFN != 0)
+/*
+ * FatFs LFN helper: current project only uses ASCII file names
+ * (digits, '-' and ':'), so direct pass-through conversion is sufficient.
+ */
+WCHAR ff_convert(WCHAR chr, UINT dir)
+{
+  (void)dir;
+  return chr;
+}
+
+WCHAR ff_wtoupper(WCHAR chr)
+{
+  if ((chr >= (WCHAR)'a') && (chr <= (WCHAR)'z'))
+  {
+    chr -= (WCHAR)('a' - 'A');
+  }
+
+  return chr;
+}
+#endif
+
 bool SD_Detect(void)
 {
   g_sd_card_detected = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin));
@@ -57,10 +84,20 @@ bool SD_Mount(void)
   return g_sd_card_mounted;
 }
 
+void SD_SetFileName(const char* file_name)
+{
+  if ((file_name == NULL) || (file_name[0] == '\0'))
+  {
+    return;
+  }
+
+  strncpy(g_sd_file_name, file_name, sizeof(g_sd_file_name) - 1U);
+  g_sd_file_name[sizeof(g_sd_file_name) - 1U] = '\0';
+}
+
 bool SD_OpenFile(void)
 {
-  /// TODO: 新打开文件 要从RTC获取时间戳，拼接成文件名
-  g_file_opened = g_file_opened ? g_file_opened : (g_sd_card_mounted ? (FR_OK == f_open(&file, "0:data", FA_OPEN_ALWAYS | FA_WRITE)) : g_sd_card_mounted);
+  g_file_opened = g_file_opened ? g_file_opened : (g_sd_card_mounted ? (FR_OK == f_open(&file, g_sd_file_name, FA_OPEN_ALWAYS | FA_WRITE)) : g_sd_card_mounted);
   return g_file_opened;
 }
 
@@ -70,8 +107,18 @@ bool SD_WriteFile(const void* buff, UINT btw, UINT* bw)
   {
     return g_file_opened;
   }
-  f_lseek(&file, f_size(&file));
-  return FR_OK == f_write(&file, buff, btw, bw);
+	
+  if (FR_OK != f_lseek(&file, f_size(&file)))
+	{
+		return false;
+	}
+
+	if (FR_OK != f_write(&file, buff, btw, bw))
+	{
+		return false;
+	}
+	
+  return FR_OK == f_sync(&file);
 }
 
 bool SD_CloseFile(void)

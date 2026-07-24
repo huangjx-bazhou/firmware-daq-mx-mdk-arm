@@ -33,6 +33,7 @@
 /* USER CODE BEGIN Includes */
 
 #include <string.h>
+#include <stdio.h>
 #include "ADS1299.h"
 #include "BatteryLevel.h"
 #include "E101-C5WN8-PS.h"
@@ -319,13 +320,34 @@ int main(void)
       /* 采样 */
       if (g_start_flag)
       {
+        RTC_TimeTypeDef rtc_time = {0};
+        RTC_DateTypeDef rtc_date = {0};
+        char file_name[24] = {0};
+
+        /* 读取RTC时间并生成文件名: yyyyMMdd-hhmmss */
+        HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+        HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+        (void)snprintf(file_name, sizeof(file_name), "0:%04u%02u%02u-%02u%02u%02u",
+                       (unsigned int)(2000U + rtc_date.Year),
+                       (unsigned int)rtc_date.Month,
+                       (unsigned int)rtc_date.Date,
+                       (unsigned int)rtc_time.Hours,
+                       (unsigned int)rtc_time.Minutes,
+                       (unsigned int)rtc_time.Seconds);
+        SD_SetFileName(file_name);
+
+        SD_OpenFile();
+
         /* 开始GY95T的连续输出 */
         GY95T_Start();
 
+
+
+        
       }
       else
       {
-
+        SD_CloseFile();
 
         /* 当停止采样时，停止GY95T的连续输出 */
         GY95T_Stop();
@@ -345,10 +367,10 @@ int main(void)
       g_tx_packet_index = (g_tx_packet_index + 1) % PACKET_COUNT;
 
 
-      SD_OpenFile();
+      //SD_OpenFile();
       UINT bw = 0U;
       FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
-      SD_CloseFile();
+      //SD_CloseFile();
 
       HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20);
     }

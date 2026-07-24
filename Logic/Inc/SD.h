@@ -60,6 +60,9 @@ bool SD_Detect(void);
 /** 挂载SD卡 */
 bool SD_Mount(void);
 
+/** 设置写入文件名（包含盘符前缀，如 0:yyyyMMdd-hhmmss.bin） */
+void SD_SetFileName(const char* file_name);
+
 /** 打开文件 */
 bool SD_OpenFile(void);
 
