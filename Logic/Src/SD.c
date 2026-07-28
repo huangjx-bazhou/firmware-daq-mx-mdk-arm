@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    SD.c
@@ -165,7 +165,7 @@ void SD_SendInfo(void)
   }
 
   /* SD卡信息缓存区 */
-  uint8_t sd_info[449];
+  uint8_t sd_info[450];
   memset(sd_info, 0, sizeof(sd_info));
   sd_info[0] = 0x84;
   sd_info[1] = 0x6F;
