@@ -50,28 +50,6 @@ volatile uint32_t g_sd_card_detect_irq_tick = 0U;
 /* 当前数据文件名，默认使用固定名 */
 static char g_sd_file_name[SD_FILE_NAME_MAX_LEN] = "0:data";
 
-#if (_USE_LFN != 0)
-/*
- * FatFs LFN helper: current project only uses ASCII file names
- * (digits, '-' and ':'), so direct pass-through conversion is sufficient.
- */
-WCHAR ff_convert(WCHAR chr, UINT dir)
-{
-  (void)dir;
-  return chr;
-}
-
-WCHAR ff_wtoupper(WCHAR chr)
-{
-  if ((chr >= (WCHAR)'a') && (chr <= (WCHAR)'z'))
-  {
-    chr -= (WCHAR)('a' - 'A');
-  }
-
-  return chr;
-}
-#endif
-
 bool SD_Detect(void)
 {
   g_sd_card_detected = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin));
