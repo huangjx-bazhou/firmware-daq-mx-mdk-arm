@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    BatteryLevel.c
@@ -20,6 +20,7 @@
 
 #include "BatteryLevel.h"
 #include "adc.h"
+#include "main.h"
 
 uint32_t g_adc3_sample = 0U;
 
@@ -53,12 +54,46 @@ uint8_t Get_Battery_Level(void)
   if (volt > 4.20f) volt = 4.20f;
   else if (volt < 3.30f) volt = 3.30f;
 
+  if (volt < 3.60f)
+  {
+    HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+  }
+  else if (volt <= 4.00f)
+  {
+    HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+  }
+  else
+  {
+    HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+  }
+
   /* TODO: 根据电池官方手册，计算电量值，没有找到相关资料  */
-  if (volt > 4.00f) g_battery_level = 100.0f * volt - 320.0f;
-  else if (volt > 3.75f) g_battery_level = 200.0f * volt - 720.0f;
-  else if (volt > 3.60f) g_battery_level = 133.3333f * volt - 470.0f;
-  else if (volt > 3.40f) g_battery_level = 25.0f * volt - 80.0f;
-  else g_battery_level = 50.0f * volt - 165.0f;
+  if (volt > 4.00f) 
+	{
+		g_battery_level = 100.0f * volt - 320.0f;
+	}
+  else if (volt > 3.75f)
+  {
+    g_battery_level = 200.0f * volt - 720.0f;
+  }
+  else if (volt > 3.60f)
+  {
+    g_battery_level = 133.3333f * volt - 470.0f;
+  }
+  else if (volt > 3.40f)
+  {
+    g_battery_level = 25.0f * volt - 80.0f;
+  }
+  else
+  {
+    g_battery_level = 50.0f * volt - 165.0f;
+  }
 
   return g_battery_level;
 }

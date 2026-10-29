@@ -231,12 +231,23 @@ int main(void)
   /* 初始化第2个ADS1299芯片 */
   ADS1299_2_Init();
 
+  Get_Battery_Level();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    static uint32_t battery_level_last_tick = 0U;
+
+    uint32_t now_tick = HAL_GetTick();
+    if ((now_tick - battery_level_last_tick) >= 2000U * 30)
+    {
+      battery_level_last_tick = now_tick;
+      (void)Get_Battery_Level();
+    }
+
     /* SD卡检测去抖：中断只登记事件，在主循环中30ms后判稳 */
     if (g_sd_card_detect_irq_pending)
     {
@@ -412,6 +423,7 @@ int main(void)
     if (g_tim6_ready && g_start_flag)
     {
       g_tim6_ready = false;
+			g_sample_idx = 0;
 
 
       uint32_t tim6_start = DWT->CYCCNT;
@@ -735,7 +747,7 @@ int main(void)
       /* GY95T数据 */
       memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count, g_gy95t_data, GY95T_DATA_SIZE);
 
-      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = Get_Battery_Level();
+      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = g_battery_level;
 
       g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
 
