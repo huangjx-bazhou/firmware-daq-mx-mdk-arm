@@ -52,8 +52,9 @@ static char g_sd_file_name[SD_FILE_NAME_MAX_LEN] = "0:data";
 
 bool SD_Detect(void)
 {
-  g_sd_card_detected = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin));
-	g_sd_card_detected = true;
+  //g_sd_card_detected = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin));
+	//g_sd_card_detected = true;
+	g_sd_card_detected = false;
   return g_sd_card_detected;
 }
 

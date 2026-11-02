@@ -75,8 +75,14 @@
 // TIM6中断标志
 static volatile bool g_tim6_ready = false;
 
+// TIM13中断标志
+static volatile bool g_tim13_ready = false;
+
 // USART3发送忙标志
 static volatile bool g_usart3_tx_busy = false;
+
+
+static uint32_t g_marker = 0;
 
 
 // ADS1299数据
@@ -177,6 +183,7 @@ int main(void)
   MX_FATFS_Init();
   MX_RTC_Init();
   MX_USB_DEVICE_Init();
+  MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
 
   // 初始化数据包，提前设置头字节为846F0B
@@ -213,6 +220,8 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
 
   HAL_TIM_Base_Start_IT(&htim7);
+	
+	HAL_TIM_Base_Start_IT(&htim13);
 
   DWT_Init();
 
@@ -246,6 +255,19 @@ int main(void)
     {
       battery_level_last_tick = now_tick;
       (void)Get_Battery_Level();
+    }
+
+    if (g_tim13_ready)
+    {
+      g_tim13_ready = false;
+      // 读取GPIO状态
+      GPIO_PinState gpio_state = HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
+
+      g_marker <<= 1;
+      if (gpio_state == GPIO_PIN_SET)
+      {
+        g_marker |= 0x01;
+      }
     }
 
     /* SD卡检测去抖：中断只登记事件，在主循环中30ms后判稳 */
@@ -749,7 +771,10 @@ int main(void)
 
       g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = g_battery_level;
 
-      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
+      ///g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1, &g_marker, sizeof(g_marker));
+
+      g_marker = 0;
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
@@ -898,8 +923,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if (Card_Detect_Pin == GPIO_Pin)
   {
     // 双边沿触发下仅记录事件，实际状态在主循环中去抖判稳
-    g_sd_card_detect_irq_tick = HAL_GetTick();
-    g_sd_card_detect_irq_pending = true;
+    //g_sd_card_detect_irq_tick = HAL_GetTick();
+    //g_sd_card_detect_irq_pending = true;
   }
 }
 
@@ -947,6 +972,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   else if (TIM7 == htim->Instance)
   {
     g_timestamp++;
+  }
+  else if (TIM13 == htim->Instance)
+  {
+    g_tim13_ready = true;
   }
 }
 
