@@ -82,7 +82,8 @@ static volatile bool g_tim13_ready = false;
 static volatile bool g_usart3_tx_busy = false;
 
 
-static uint32_t g_marker = 0;
+static uint8_t g_marker[1024] = {0};
+static uint16_t g_marker_index = 0U;
 
 
 // ADS1299数据
@@ -263,10 +264,16 @@ int main(void)
       // 读取GPIO状态
       GPIO_PinState gpio_state = HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
 
-      g_marker <<= 1;
-      if (gpio_state == GPIO_PIN_SET)
+      if (g_marker_index < sizeof(g_marker))
       {
-        g_marker |= 0x01;
+        if (gpio_state == GPIO_PIN_SET)
+        {
+          g_marker[g_marker_index++] = 0x01;
+        }
+        else
+        {
+          g_marker[g_marker_index++] = 0x00;
+        }
       }
     }
 
@@ -773,9 +780,11 @@ int main(void)
       g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = g_battery_level;
 
       ///g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
-      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1, &g_marker, sizeof(g_marker));
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1, &g_marker_index, sizeof(g_marker_index));
 
-      g_marker = 0;
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1 + sizeof(g_marker_index), &g_marker, g_marker_index);
+
+      g_marker_index = 0;
 
       g_tx_ads_data_count = g_ads_data_count;
       // 发送完毕，重置数据个数，从头开始写数据
