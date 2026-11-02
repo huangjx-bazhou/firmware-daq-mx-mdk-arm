@@ -42,6 +42,9 @@ void MX_RTC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+/* Sets the RTC from a UTC Unix timestamp in milliseconds (2000-2099). */
+HAL_StatusTypeDef RTC_SetDateTimeFromUnixMilliseconds(uint64_t timestamp_ms);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
@@ -49,4 +52,3 @@ void MX_RTC_Init(void);
 #endif
 
 #endif /* __RTC_H__ */
-

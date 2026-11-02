@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "rtc.h"
+#include <stdbool.h>
 
 /* USER CODE BEGIN 0 */
 
@@ -222,5 +223,78 @@ void System_Time_Init(void)
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, (BKUPReadDRx & 0xFFFF0000) | RTC_BKPORL_VALUE);
 }
 
-/* USER CODE END 1 */
+HAL_StatusTypeDef RTC_SetDateTimeFromUnixMilliseconds(uint64_t timestamp_ms)
+{
+  const uint64_t unix_2000_ms = 946684800000ULL;
+  const uint64_t unix_2100_ms = 4102444800000ULL;
+  const uint8_t days_per_month[] = {31U, 28U, 31U, 30U, 31U, 30U,
+                                    31U, 31U, 30U, 31U, 30U, 31U};
+  uint64_t seconds;
+  uint32_t days_since_epoch;
+  uint8_t weekday;
+  uint16_t year = 1970U;
+  uint8_t month = 1U;
+  uint8_t day;
+  bool leap_year;
+  RTC_TimeTypeDef time = {0};
+  RTC_DateTypeDef date = {0};
 
+  if ((timestamp_ms < unix_2000_ms) || (timestamp_ms >= unix_2100_ms))
+  {
+    return HAL_ERROR;
+  }
+
+  seconds = timestamp_ms / 1000U;
+  days_since_epoch = (uint32_t)(seconds / 86400U);
+  weekday = (uint8_t)((days_since_epoch + 3U) % 7U + 1U);
+  seconds %= 86400U;
+
+  leap_year = ((year % 4U == 0U) && ((year % 100U != 0U) || (year % 400U == 0U)));
+  while (days_since_epoch >= (leap_year ? 366U : 365U))
+  {
+    days_since_epoch -= (leap_year ? 366U : 365U);
+    ++year;
+    leap_year = ((year % 4U == 0U) && ((year % 100U != 0U) || (year % 400U == 0U)));
+  }
+
+  while (month <= 12U)
+  {
+    uint8_t month_days = days_per_month[month - 1U];
+    if ((month == 2U) && ((year % 4U == 0U) && ((year % 100U != 0U) || (year % 400U == 0U))))
+    {
+      ++month_days;
+    }
+
+    if (days_since_epoch < month_days)
+    {
+      break;
+    }
+    days_since_epoch -= month_days;
+    ++month;
+  }
+  day = (uint8_t)(days_since_epoch + 1U);
+
+  time.Hours = (uint8_t)(seconds / 3600U);
+  time.Minutes = (uint8_t)((seconds % 3600U) / 60U);
+  time.Seconds = (uint8_t)(seconds % 60U);
+  time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  time.StoreOperation = RTC_STOREOPERATION_RESET;
+
+  date.WeekDay = weekday;
+  date.Month = month;
+  date.Date = day;
+  date.Year = (uint8_t)(year - 2000U);
+
+  if (HAL_RTC_SetTime(&hrtc, &time, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+  if (HAL_RTC_SetDate(&hrtc, &date, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+
+  return HAL_OK;
+}
+
+/* USER CODE END 1 */

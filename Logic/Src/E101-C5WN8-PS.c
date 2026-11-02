@@ -19,9 +19,18 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "E101-C5WN8-PS.h"
+#include "rtc.h"
 #include <string.h>
 
-#define CMD_PACKET_SIZE 60U
+#define CMD_PACKET_SIZE 64U
+#define CMD_TIMESTAMP_OFFSET 3U
+#define CMD_LED_BRIGHTNESS_OFFSET 11U
+#define CMD_CHANNEL_MASK_OFFSET 27U
+#define CMD_POWER_FLAG_OFFSET 59U
+#define CMD_STORAGE_FLAG_OFFSET 60U
+#define CMD_SAMPLE_RATE_OFFSET 61U
+#define CMD_START_FLAG_OFFSET 62U
+#define CMD_SD_INFO_FLAG_OFFSET 63U
 #define CMD_ENABLE_FLAG 0x55
 #define CMD_DISABLE_FLAG 0xAA
 #define RECEIVED_NONE 0U
@@ -109,48 +118,57 @@ void WIFI_ParseCommand(uint8_t* cmd)
 
   /* 不处理第2字节，因为它是0x0B，不感兴趣 */
 
-  /* 不处理第3，4，5，6字节，不感兴趣 */
+  /* 第3到第10字节是小端序Unix毫秒时间戳 */
+  uint64_t timestamp_ms = 0U;
+  for (uint8_t i = 0U; i < 8U; ++i)
+  {
+    timestamp_ms |= ((uint64_t)cmd[CMD_TIMESTAMP_OFFSET + i]) << (8U * i);
+  }
+  if (HAL_OK != RTC_SetDateTimeFromUnixMilliseconds(timestamp_ms))
+  {
+    Error_Handler();
+  }
 
   /* LED亮度解析 */
   for (uint8_t i = 0; i < LED_COUNT; ++i)
   {
-    g_led_brightness[i] = cmd[7U + i];
+    g_led_brightness[i] = cmd[CMD_LED_BRIGHTNESS_OFFSET + i];
   }
 
   /* 通道掩码复制 */
-  memcpy(g_channel_mask, cmd + 23U, LED_COUNT * RECVIVER_COUNT / 8);
+  memcpy(g_channel_mask, cmd + CMD_CHANNEL_MASK_OFFSET, LED_COUNT * RECVIVER_COUNT / 8);
 
   /* 开关机标志解析 */
-  if (cmd[55] != g_power_cmd)
+  if (cmd[CMD_POWER_FLAG_OFFSET] != g_power_cmd)
   {
-		g_power_cmd = cmd[55];
+		g_power_cmd = cmd[CMD_POWER_FLAG_OFFSET];
     g_power_flag = (g_power_cmd == CMD_ENABLE_FLAG);
     g_power_flag_changed = true;
   }
 
   /* 离线存储标志解析 */
-  if (cmd[56] != g_storage_cmd)
+  if (cmd[CMD_STORAGE_FLAG_OFFSET] != g_storage_cmd)
   {
-		g_storage_cmd = cmd[56];
+		g_storage_cmd = cmd[CMD_STORAGE_FLAG_OFFSET];
     g_storage_flag = (g_storage_cmd == CMD_ENABLE_FLAG);
     g_storage_flag_changed = true;
   }
 
   /* 采样率解析 */
-  if (cmd[57] != g_sample_rate)
+  if (cmd[CMD_SAMPLE_RATE_OFFSET] != g_sample_rate)
   {
-    g_sample_rate = cmd[57];
+    g_sample_rate = cmd[CMD_SAMPLE_RATE_OFFSET];
     g_sample_rate_changed = true;
   }
 
   /* 开始采样标志解析 */
-  if (cmd[58] != g_start_cmd)
+  if (cmd[CMD_START_FLAG_OFFSET] != g_start_cmd)
   {
-		g_start_cmd = cmd[58];
+		g_start_cmd = cmd[CMD_START_FLAG_OFFSET];
     g_start_flag = (g_start_cmd == CMD_ENABLE_FLAG);
     g_start_flag_changed = true;
   }
 
   /* 最后一位是0x01就返回存储卡信息 */
-  g_send_sd_info_flag = (CMD_ENABLE_FLAG == cmd[59]);
+  g_send_sd_info_flag = (CMD_ENABLE_FLAG == cmd[CMD_SD_INFO_FLAG_OFFSET]);
 }
