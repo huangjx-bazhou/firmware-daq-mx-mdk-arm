@@ -164,7 +164,7 @@ void ADS1299_1_Init(void)
 
   for (uint8_t ch = 0; ch < 8; ch++)
   {
-    ADS1299_WriteReg(0x05 + ch, 0x00);
+    ADS1299_WriteReg(0x05 + ch, 0x10);
   }
 
   ADS1299_SendCmd(ADS1299_CMD_RDATAC);
@@ -198,7 +198,7 @@ void ADS1299_2_Init(void)
 
   for (uint8_t ch = 0; ch < 8; ch++)
   {
-    ADS1299_WriteReg(0x05 + ch, 0x00);
+    ADS1299_WriteReg(0x05 + ch, 0x10);
   }
 
   ADS1299_SendCmd(ADS1299_CMD_RDATAC);

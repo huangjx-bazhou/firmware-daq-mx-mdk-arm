@@ -147,12 +147,12 @@ void WIFI_ParseCommand(uint8_t* cmd)
   }
 
   /* 离线存储标志解析 */
-  if (cmd[CMD_STORAGE_FLAG_OFFSET] != g_storage_cmd)
-  {
+  //if (cmd[CMD_STORAGE_FLAG_OFFSET] != g_storage_cmd)
+  //{
 		g_storage_cmd = cmd[CMD_STORAGE_FLAG_OFFSET];
     g_storage_flag = (g_storage_cmd == CMD_ENABLE_FLAG);
     g_storage_flag_changed = true;
-  }
+  //}
 
   /* 采样率解析 */
   if (cmd[CMD_SAMPLE_RATE_OFFSET] != g_sample_rate)

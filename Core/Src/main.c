@@ -61,6 +61,9 @@
 // 如果组包速度大于DMA发送速度
 #define PACKET_COUNT 8U // 数据包数量
 
+#define MARKER_SIZE 16U
+#define MARKER_CAPACITY (MARKER_SIZE * 8U)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -81,9 +84,10 @@ static volatile bool g_tim13_ready = false;
 // USART3发送忙标志
 static volatile bool g_usart3_tx_busy = false;
 
-
-static uint8_t g_marker[1024] = {0};
-static uint16_t g_marker_index = 0U;
+static volatile uint32_t g_marker_time[MARKER_CAPACITY] = {0};
+static volatile uint8_t g_marker[MARKER_SIZE] = {0};
+static volatile uint8_t g_marker_index = 0U;
+static volatile bool g_marker_start = false;
 
 
 // ADS1299数据
@@ -258,25 +262,6 @@ int main(void)
       (void)Get_Battery_Level();
     }
 
-    if (g_tim13_ready)
-    {
-      g_tim13_ready = false;
-      // 读取GPIO状态
-      GPIO_PinState gpio_state = HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
-
-      if (g_marker_index < sizeof(g_marker))
-      {
-        if (gpio_state == GPIO_PIN_SET)
-        {
-          g_marker[g_marker_index++] = 0x01;
-        }
-        else
-        {
-          g_marker[g_marker_index++] = 0x00;
-        }
-      }
-    }
-
     /* SD卡检测去抖：中断只登记事件，在主循环中30ms后判稳 */
     if (g_sd_card_detect_irq_pending)
     {
@@ -393,6 +378,12 @@ int main(void)
       /* 采样 */
       if (g_start_flag)
       {
+
+        //g_timestamp = 0U;
+
+        memset(g_marker, 0, sizeof(g_marker));
+        g_marker_index = 0;
+
         if (g_storage_flag)
         {
           RTC_TimeTypeDef rtc_time = {0};
@@ -427,9 +418,52 @@ int main(void)
         GY95T_Stop();
 
         g_packet_num = 0U;
-        g_timestamp = 0U;
+        //g_timestamp = 0U;
       }
     }
+
+    // if (g_tim13_ready && g_start_flag)
+    // {
+    //   g_tim13_ready = false;
+    //   // 读取GPIO状态
+    //   GPIO_PinState gpio_state = HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
+
+    //   if (g_marker_index < MARKER_CAPACITY)
+    //   {
+    //     g_marker_time[g_marker_index] = g_timestamp;
+
+    //     uint16_t marker_byte_index = g_marker_index / 8U;
+    //     uint8_t marker_bit_mask = (uint8_t)(1U << (g_marker_index % 8U));
+    //     if (gpio_state == GPIO_PIN_SET)
+    //     {
+    //       g_marker[marker_byte_index] |= marker_bit_mask;
+    //     }
+    //     else
+    //     {
+    //       g_marker[marker_byte_index] &= (uint8_t)~marker_bit_mask;
+    //     }
+    //     g_marker_index++;
+    //   }
+    //   else
+    //   {
+    //     for (uint16_t i = 0U; i < MARKER_SIZE - 1U; i++)
+    //     {
+    //       g_marker[i] = (uint8_t)((g_marker[i] >> 1U) | ((g_marker[i + 1U] & 0x01U) << 7U));
+    //     }
+    //     g_marker[MARKER_SIZE - 1U] >>= 1U;
+
+    //     if (gpio_state == GPIO_PIN_SET)
+    //     {
+    //       g_marker[MARKER_SIZE - 1U] |= 0x80U;
+    //     }
+
+    //     for (uint16_t i = 0U; i < MARKER_CAPACITY - 1U; i++)
+    //     {
+    //       g_marker_time[i] = g_marker_time[i + 1U];
+    //     }
+    //     g_marker_time[MARKER_CAPACITY - 1U] = g_timestamp;
+    //   }
+    // }
 
     /* 6. 处理USART3发送忙标志，USART3发送处于空闲状态,并且有新的数据包需要发送 */
     if (!g_usart3_tx_busy && (g_tx_packet_index != g_new_packet_index))
@@ -443,15 +477,20 @@ int main(void)
       if (g_storage_flag)
       {
         UINT bw = 0U;
-        FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20, &bw);
+        FRESULT res = SD_WriteFile(g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20 + 21, &bw);
       }
 
-      HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20);
+      HAL_UART_Transmit_DMA(&huart3, g_packet[g_tx_packet_index], 14 + g_tx_ads_data_count * 4 + 20 + 21);
     }
 
     /* 7. 处理定时器6中断 */
     if (g_tim6_ready && g_start_flag)
     {
+        memset(g_marker, 0, sizeof(g_marker));
+        g_marker_index = 0;
+        g_marker_start = true;
+
+
       g_tim6_ready = false;
 			g_sample_idx = 0;
 
@@ -745,6 +784,9 @@ int main(void)
       }
 
       g_sample_idx++;
+
+
+      g_marker_start = false;
     }
 
     // 采样次数大于指定次数就发送
@@ -779,11 +821,15 @@ int main(void)
 
       g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE] = g_battery_level;
 
-      ///g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
-      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1, &g_marker_index, sizeof(g_marker_index));
+      g_packet[g_new_packet_index][14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1] = 0;
 
-      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 1 + sizeof(g_marker_index), &g_marker, g_marker_index);
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 2, g_marker_time, 4);
 
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 2 + 4, &g_marker_index, sizeof(g_marker_index));
+
+      memcpy(g_packet[g_new_packet_index] + 14 + 4 * g_ads_data_count + GY95T_DATA_SIZE + 2 + 4 + sizeof(g_marker_index), g_marker, MARKER_SIZE);
+
+      memset(g_marker, 0, sizeof(g_marker));
       g_marker_index = 0;
 
       g_tx_ads_data_count = g_ads_data_count;
@@ -983,9 +1029,48 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     g_timestamp++;
   }
-  else if (TIM13 == htim->Instance)
+  else if (TIM13 == htim->Instance && g_marker_start)
   {
     g_tim13_ready = true;
+
+				// 读取GPIO状态
+		GPIO_PinState gpio_state = HAL_GPIO_ReadPin(Card_Detect_GPIO_Port, Card_Detect_Pin);
+
+		if (g_marker_index < MARKER_CAPACITY)
+		{
+			g_marker_time[g_marker_index] = g_timestamp;
+
+			uint16_t marker_byte_index = g_marker_index / 8U;
+			uint8_t marker_bit_mask = (uint8_t)(1U << (7U - (g_marker_index % 8U)));
+			if (gpio_state == GPIO_PIN_SET)
+			{
+				g_marker[marker_byte_index] |= marker_bit_mask;
+			}
+			else
+			{
+				g_marker[marker_byte_index] &= (uint8_t)~marker_bit_mask;
+			}
+			g_marker_index++;
+		}
+		else
+		{
+			for (uint16_t i = 0U; i < MARKER_SIZE - 1U; i++)
+			{
+				g_marker[i] = (uint8_t)((g_marker[i] << 1U) | (g_marker[i + 1U] >> 7U));
+			}
+			g_marker[MARKER_SIZE - 1U] <<= 1U;
+
+			if (gpio_state == GPIO_PIN_SET)
+			{
+				g_marker[MARKER_SIZE - 1U] |= 0x01U;
+			}
+
+			for (uint16_t i = 0U; i < MARKER_CAPACITY - 1U; i++)
+			{
+				g_marker_time[i] = g_marker_time[i + 1U];
+			}
+			g_marker_time[MARKER_CAPACITY - 1U] = g_timestamp;
+		}
   }
 }
 
