@@ -196,7 +196,7 @@ int main(void)
   {
     g_packet[i][0] = 0x84;
     g_packet[i][1] = 0x6F;
-    g_packet[i][2] = 0x0B;
+    g_packet[i][2] = g_wifi_command_type;
     g_packet[i][3] = 0x00;
   }
 
@@ -803,6 +803,8 @@ int main(void)
       {
         g_new_packet_index = new_packet_index;
       }
+
+      g_packet[g_new_packet_index][2] = g_wifi_command_type;
 
       // 数据个数
       memcpy(g_packet[g_new_packet_index] + 4, &g_ads_data_count, sizeof(g_ads_data_count));

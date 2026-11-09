@@ -23,6 +23,7 @@
 #include <string.h>
 
 #define CMD_PACKET_SIZE 64U
+#define CMD_TYPE_OFFSET 2U
 #define CMD_TIMESTAMP_OFFSET 3U
 #define CMD_LED_BRIGHTNESS_OFFSET 11U
 #define CMD_CHANNEL_MASK_OFFSET 27U
@@ -51,6 +52,7 @@ static uint8_t wifi_received_state = RECEIVED_NONE;
 static uint8_t wifi_received = 0U;
 
 volatile uint32_t g_timestamp = 0U;
+uint8_t g_wifi_command_type = 0x0BU;
 uint8_t g_led_brightness[LED_COUNT];
 uint8_t g_channel_mask[LED_COUNT * RECVIVER_COUNT / 8];
 bool g_power_flag_changed = false;
@@ -116,7 +118,8 @@ void WIFI_ParseCommand(uint8_t* cmd)
 {
   /* 不验证第0个字节和第1个字节是不是0x84和0x6F */
 
-  /* 不处理第2字节，因为它是0x0B，不感兴趣 */
+  /* 保存命令类型，回复时原样返回 */
+  g_wifi_command_type = cmd[CMD_TYPE_OFFSET];
 
   /* 第3到第10字节是小端序Unix毫秒时间戳 */
   uint64_t timestamp_ms = 0U;

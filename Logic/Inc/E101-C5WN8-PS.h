@@ -45,6 +45,9 @@ extern volatile uint8_t g_wifi_usart3_rx_byte;
 /** wifi 环形缓冲区 */
 extern RingBuffer g_wifi_rb;
 
+/** 最近收到的命令类型，回复时原样返回 */
+extern uint8_t g_wifi_command_type;
+
 /* 以下是解析出来的命令参数 ------------------------------------------------------------------*/
 
 /**  时间戳, 上位机应该传0，下位机每隔100us增加1 */
@@ -112,4 +115,3 @@ void WIFI_ParseCommand(uint8_t* cmd);
 }
 #endif
 #endif /*__E101_C5WN8_PS_H__ */
-

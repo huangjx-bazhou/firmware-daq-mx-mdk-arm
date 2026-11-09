@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 
 #include "SD.h"
+#include "E101-C5WN8-PS.h"
 #include <string.h>
 #include <usart.h>
 
@@ -148,7 +149,7 @@ void SD_SendInfo(void)
   memset(sd_info, 0, sizeof(sd_info));
   sd_info[0] = 0x84;
   sd_info[1] = 0x6F;
-  sd_info[2] = 0x0B;
+  sd_info[2] = g_wifi_command_type;
   sd_info[3] = 0x01;
 
   uint8_t offset = 4U;
@@ -179,4 +180,3 @@ void SD_SendInfo(void)
   memcpy(sd_info + offset, &total_bytes, sizeof(total_bytes));
   HAL_UART_Transmit(&huart3, sd_info, sizeof(sd_info), 100);
 }
-
